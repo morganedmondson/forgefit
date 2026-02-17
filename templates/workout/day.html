@@ -3,7 +3,7 @@
 {% block content %}
 <div class="gym-view">
     <div class="gym-header">
-        <a href="{{ url_for('workout.plan') }}" class="back-link">&larr; Back to plan</a>
+        <a href="{{ url_for('workout.plan') }}" class="back-link"><i data-feather="arrow-left" style="width:16px;height:16px;"></i> Back to plan</a>
         <h2>{{ day.label }}</h2>
         <p class="gym-sub">Week {{ plan.week_number }}</p>
     </div>
