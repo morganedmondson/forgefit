@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block title %}Week {{ plan.week_number }} — ForgeFit{% endblock %}
+{% block content %}
+<div class="plan-header">
+    <h2>Week {{ plan.week_number }}</h2>
+    <p class="plan-sub">Your training plan for this week</p>
+</div>
+
+<div class="day-tabs">
+    {% for day in plan.days %}
+        <button class="day-tab {% if loop.first %}active{% endif %}" onclick="showDay({{ day.day_index }})">
+            {{ day.label }}
+        </button>
+    {% endfor %}
+</div>
+
+{% for day in plan.days %}
+<div class="day-panel {% if loop.first %}active{% endif %}" id="day-{{ day.day_index }}">
+    <div class="day-card">
+        <div class="day-card-header">
+            <h3>{{ day.label }}</h3>
+            <a href="{{ url_for('workout.day', day_index=day.day_index) }}" class="btn btn-secondary btn-small">Gym View</a>
+        </div>
+        <table class="exercise-table">
+            <thead>
+                <tr>
+                    <th>Exercise</th>
+                    <th>Sets</th>
+                    <th>Reps</th>
+                    <th>Weight</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for ex in day.exercises %}
+                <tr class="{% if ex.is_compound %}compound-row{% endif %}">
+                    <td>
+                        {{ ex.name }}
+                        {% if ex.notes %}<span class="exercise-note">{{ ex.notes }}</span>{% endif %}
+                    </td>
+                    <td>{{ ex.sets }}</td>
+                    <td>{{ ex.reps }}</td>
+                    <td>{{ ex.weight_kg }} kg</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endfor %}
+
+<div class="plan-actions">
+    <form method="POST" action="{{ url_for('workout.next_week') }}" class="inline-form">
+        <button type="submit" class="btn btn-primary btn-large">Generate Next Week</button>
+    </form>
+    <a href="{{ url_for('profile.edit') }}" class="btn btn-secondary">Edit Profile</a>
+</div>
+{% endblock %}

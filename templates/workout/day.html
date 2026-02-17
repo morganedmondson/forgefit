@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}{{ day.label }} — Week {{ plan.week_number }} — ForgeFit{% endblock %}
+{% block content %}
+<div class="gym-view">
+    <div class="gym-header">
+        <a href="{{ url_for('workout.plan') }}" class="back-link">&larr; Back to plan</a>
+        <h2>{{ day.label }}</h2>
+        <p class="gym-sub">Week {{ plan.week_number }}</p>
+    </div>
+
+    <div class="gym-exercises">
+        {% for ex in day.exercises %}
+        <div class="gym-card {% if ex.is_compound %}gym-card-compound{% endif %}">
+            <div class="gym-card-name">{{ ex.name }}</div>
+            <div class="gym-card-details">
+                <div class="gym-stat">
+                    <span class="gym-stat-value">{{ ex.sets }}</span>
+                    <span class="gym-stat-label">Sets</span>
+                </div>
+                <div class="gym-stat">
+                    <span class="gym-stat-value">{{ ex.reps }}</span>
+                    <span class="gym-stat-label">Reps</span>
+                </div>
+                <div class="gym-stat">
+                    <span class="gym-stat-value">{{ ex.weight_kg }}<small>kg</small></span>
+                    <span class="gym-stat-label">Weight</span>
+                </div>
+            </div>
+            {% if ex.notes %}
+                <div class="gym-card-notes">{{ ex.notes }}</div>
+            {% endif %}
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

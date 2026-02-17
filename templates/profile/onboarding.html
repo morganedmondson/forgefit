@@ -1,0 +1,154 @@
+{% extends "base.html" %}
+{% block title %}{% if editing %}Edit Profile{% else %}Set Up Your Profile{% endif %} — ForgeFit{% endblock %}
+{% block content %}
+<div class="onboarding">
+    <h2>{% if editing %}Edit Your Profile{% else %}Let's Build Your Plan{% endif %}</h2>
+    <p class="onboarding-sub">Tell us about yourself and we'll create a personalised training plan</p>
+
+    <form method="POST" class="onboarding-form">
+        <div class="form-section">
+            <h3>Body Stats</h3>
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="height_cm">Height (cm)</label>
+                    <input type="number" id="height_cm" name="height_cm" min="100" max="250" step="0.1"
+                           value="{{ profile.height_cm if profile else '' }}" required>
+                </div>
+                <div class="form-group">
+                    <label for="weight_kg">Weight (kg)</label>
+                    <input type="number" id="weight_kg" name="weight_kg" min="30" max="300" step="0.1"
+                           value="{{ profile.weight_kg if profile else '' }}" required>
+                </div>
+            </div>
+        </div>
+
+        <div class="form-section">
+            <h3>Training Goal</h3>
+            <div class="radio-cards">
+                <label class="radio-card">
+                    <input type="radio" name="goal" value="muscle"
+                           {{ 'checked' if profile and profile.goal == 'muscle' else '' }} required>
+                    <div class="radio-card-body">
+                        <strong>Build Muscle</strong>
+                        <span>Hypertrophy focused training</span>
+                    </div>
+                </label>
+                <label class="radio-card">
+                    <input type="radio" name="goal" value="strength"
+                           {{ 'checked' if profile and profile.goal == 'strength' else '' }}>
+                    <div class="radio-card-body">
+                        <strong>Get Stronger</strong>
+                        <span>Strength and power focused</span>
+                    </div>
+                </label>
+                <label class="radio-card">
+                    <input type="radio" name="goal" value="general"
+                           {{ 'checked' if profile and profile.goal == 'general' else '' }}>
+                    <div class="radio-card-body">
+                        <strong>General Fitness</strong>
+                        <span>Balanced approach</span>
+                    </div>
+                </label>
+            </div>
+        </div>
+
+        <div class="form-section">
+            <h3>Plan Type</h3>
+            <div class="radio-cards">
+                <label class="radio-card">
+                    <input type="radio" name="plan_type" value="push_pull_legs"
+                           {{ 'checked' if profile and profile.plan_type == 'push_pull_legs' else '' }} required>
+                    <div class="radio-card-body">
+                        <strong>Push / Pull / Legs</strong>
+                        <span>Split by movement pattern</span>
+                    </div>
+                </label>
+                <label class="radio-card">
+                    <input type="radio" name="plan_type" value="upper_lower"
+                           {{ 'checked' if profile and profile.plan_type == 'upper_lower' else '' }}>
+                    <div class="radio-card-body">
+                        <strong>Upper / Lower</strong>
+                        <span>Alternate upper and lower body</span>
+                    </div>
+                </label>
+                <label class="radio-card">
+                    <input type="radio" name="plan_type" value="full_body"
+                           {{ 'checked' if profile and profile.plan_type == 'full_body' else '' }}>
+                    <div class="radio-card-body">
+                        <strong>Full Body</strong>
+                        <span>Hit everything each session</span>
+                    </div>
+                </label>
+                <label class="radio-card">
+                    <input type="radio" name="plan_type" value="menstrual_cycle"
+                           {{ 'checked' if profile and profile.plan_type == 'menstrual_cycle' else '' }}>
+                    <div class="radio-card-body">
+                        <strong>Menstrual Cycle Adapted</strong>
+                        <span>Intensity varies with your cycle</span>
+                    </div>
+                </label>
+                <label class="radio-card">
+                    <input type="radio" name="plan_type" value="bro_split"
+                           {{ 'checked' if profile and profile.plan_type == 'bro_split' else '' }}>
+                    <div class="radio-card-body">
+                        <strong>Bro Split</strong>
+                        <span>One muscle group per day</span>
+                    </div>
+                </label>
+            </div>
+        </div>
+
+        <div class="form-section">
+            <h3>Training Days per Week</h3>
+            <div class="radio-cards radio-cards-inline">
+                <label class="radio-card radio-card-small">
+                    <input type="radio" name="days_per_week" value="3"
+                           {{ 'checked' if profile and profile.days_per_week == 3 else '' }} required>
+                    <div class="radio-card-body"><strong>3</strong></div>
+                </label>
+                <label class="radio-card radio-card-small">
+                    <input type="radio" name="days_per_week" value="4"
+                           {{ 'checked' if profile and profile.days_per_week == 4 else '' }}>
+                    <div class="radio-card-body"><strong>4</strong></div>
+                </label>
+                <label class="radio-card radio-card-small">
+                    <input type="radio" name="days_per_week" value="5"
+                           {{ 'checked' if profile and profile.days_per_week == 5 else '' }}>
+                    <div class="radio-card-body"><strong>5</strong></div>
+                </label>
+            </div>
+        </div>
+
+        <div class="form-section">
+            <h3>Current 1 Rep Maxes (kg)</h3>
+            <p class="form-hint">Enter the maximum weight you can lift for one rep. Estimate if unsure.</p>
+            <div class="form-row form-row-4">
+                <div class="form-group">
+                    <label for="squat_1rm">Squat</label>
+                    <input type="number" id="squat_1rm" name="squat_1rm" min="1" step="0.5"
+                           value="{{ profile.squat_1rm if profile else '' }}" required>
+                </div>
+                <div class="form-group">
+                    <label for="bench_1rm">Bench Press</label>
+                    <input type="number" id="bench_1rm" name="bench_1rm" min="1" step="0.5"
+                           value="{{ profile.bench_1rm if profile else '' }}" required>
+                </div>
+                <div class="form-group">
+                    <label for="deadlift_1rm">Deadlift</label>
+                    <input type="number" id="deadlift_1rm" name="deadlift_1rm" min="1" step="0.5"
+                           value="{{ profile.deadlift_1rm if profile else '' }}" required>
+                </div>
+                <div class="form-group">
+                    <label for="ohp_1rm">Overhead Press</label>
+                    <input type="number" id="ohp_1rm" name="ohp_1rm" min="1" step="0.5"
+                           value="{{ profile.ohp_1rm if profile else '' }}" required>
+                </div>
+            </div>
+        </div>
+
+        <button type="submit" class="btn btn-primary btn-full btn-large">
+            {% if editing %}Update & Regenerate Plan{% else %}Generate My Plan{% endif %}
+        </button>
+    </form>
+</div>
+{% endblock %}

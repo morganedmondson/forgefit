@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block title %}Log In — ForgeFit{% endblock %}
+{% block content %}
+<div class="auth-card">
+    <h2>Log In</h2>
+    <form method="POST">
+        <div class="form-group">
+            <label for="email">Email</label>
+            <input type="email" id="email" name="email" required>
+        </div>
+        <div class="form-group">
+            <label for="password">Password</label>
+            <input type="password" id="password" name="password" required>
+        </div>
+        <button type="submit" class="btn btn-primary btn-full">Log In</button>
+    </form>
+    <p class="auth-switch">Don't have an account? <a href="{{ url_for('auth.signup') }}">Sign up</a></p>
+</div>
+{% endblock %}
