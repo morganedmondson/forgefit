@@ -64,3 +64,14 @@ class Exercise(db.Model):
     weight_kg = db.Column(db.Float, nullable=False)
     is_compound = db.Column(db.Boolean, default=False)
     notes = db.Column(db.String(200), default="")
+
+    logs = db.relationship("WorkoutLog", backref="exercise", cascade="all, delete-orphan")
+
+
+class WorkoutLog(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    exercise_id = db.Column(db.Integer, db.ForeignKey("exercise.id"), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
+    actual_reps = db.Column(db.Integer, nullable=False)
+    actual_weight_kg = db.Column(db.Float, nullable=False)
+    logged_at = db.Column(db.DateTime, default=datetime.utcnow)

@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+{% block title %}Progress — ForgeFit{% endblock %}
+{% block content %}
+<div class="progress-page">
+    <div class="plan-header">
+        <h2>Your Progress</h2>
+        <p class="plan-sub">Track your strength gains over time</p>
+    </div>
+
+    {% if exercise_names %}
+    <div class="progress-controls">
+        <div class="form-group">
+            <label>Exercise</label>
+            <select id="exercise-select" onchange="updateChart()">
+                {% for name in exercise_names %}
+                    <option value="{{ name }}">{{ name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+    </div>
+
+    <div class="progress-chart-container">
+        <canvas id="progressChart"></canvas>
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <p>No logged workouts yet. Head to your plan and log some exercises to see your progress here.</p>
+        <a href="{{ url_for('workout.plan') }}" class="btn btn-primary">Go to Plan</a>
+    </div>
+    {% endif %}
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+var exerciseData = {{ exercise_data | safe }};
+var chart = null;
+
+function updateChart() {
+    var select = document.getElementById('exercise-select');
+    if (!select) return;
+    var name = select.value;
+    var data = exerciseData[name] || [];
+
+    var labels = data.map(function(d) { return d.date; });
+    var weights = data.map(function(d) { return d.weight; });
+    var reps = data.map(function(d) { return d.reps; });
+
+    if (chart) chart.destroy();
+
+    var ctx = document.getElementById('progressChart').getContext('2d');
+    chart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [
+                {
+                    label: 'Weight (kg)',
+                    data: weights,
+                    borderColor: '#111111',
+                    backgroundColor: 'rgba(17,17,17,0.1)',
+                    tension: 0.3,
+                    fill: true,
+                    yAxisID: 'y',
+                },
+                {
+                    label: 'Reps',
+                    data: reps,
+                    borderColor: '#00C48C',
+                    backgroundColor: 'rgba(0,196,140,0.1)',
+                    tension: 0.3,
+                    fill: false,
+                    yAxisID: 'y1',
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { position: 'top' }
+            },
+            scales: {
+                y: {
+                    type: 'linear',
+                    position: 'left',
+                    title: { display: true, text: 'Weight (kg)' },
+                },
+                y1: {
+                    type: 'linear',
+                    position: 'right',
+                    title: { display: true, text: 'Reps' },
+                    grid: { drawOnChartArea: false },
+                }
+            }
+        }
+    });
+}
+
+if (document.getElementById('exercise-select')) {
+    updateChart();
+}
+</script>
+{% endblock %}

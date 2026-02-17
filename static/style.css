@@ -320,7 +320,190 @@ h1, h2, h3, h4, h5, h6 {
     text-transform: uppercase;
     letter-spacing: 0.08em;
 }
+.gym-card-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+}
+.gym-card-top .gym-card-name { margin-bottom: 0; }
+.gym-logged-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--success);
+}
 .gym-card-notes { margin-top: 8px; font-size: 0.8125rem; color: var(--text-muted); }
+.gym-log-form {
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    align-items: flex-end;
+    gap: 12px;
+}
+.gym-log-inputs {
+    display: flex;
+    gap: 12px;
+    flex: 1;
+}
+.gym-log-field { flex: 1; }
+.gym-log-field label {
+    display: block;
+    font-size: 11px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-muted);
+    margin-bottom: 4px;
+}
+.gym-log-field input {
+    width: 100%;
+    padding: 8px 12px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    font-family: 'Inter', sans-serif;
+    font-size: 0.875rem;
+    outline: none;
+}
+.gym-log-field input:focus { border-color: var(--text); }
+.gym-log-btn { white-space: nowrap; }
+
+/* Progress page */
+.progress-page { max-width: 800px; margin: 0 auto; }
+.progress-controls { margin-bottom: 24px; max-width: 300px; }
+.progress-chart-container {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 24px;
+    height: 400px;
+}
+.empty-state {
+    text-align: center;
+    padding: 64px 24px;
+    color: var(--text-muted);
+}
+.empty-state p { margin-bottom: 24px; }
+
+/* Chat sidebar */
+.chat-toggle {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background: var(--accent);
+    color: #FFFFFF;
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    z-index: 200;
+    transition: all 0.15s ease;
+}
+.chat-toggle:hover { transform: scale(1.05); }
+
+.chat-sidebar {
+    position: fixed;
+    top: 0;
+    right: -380px;
+    width: 380px;
+    height: 100vh;
+    background: var(--surface);
+    border-left: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    z-index: 300;
+    transition: right 0.25s ease;
+}
+.chat-sidebar.open { right: 0; }
+
+.chat-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border);
+}
+.chat-header h4 { font-size: 1rem; }
+.chat-close {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--text-muted);
+    padding: 4px;
+}
+.chat-close:hover { color: var(--text); }
+
+.chat-messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+.chat-msg {
+    padding: 10px 14px;
+    border-radius: 12px;
+    font-size: 0.875rem;
+    line-height: 1.5;
+    max-width: 85%;
+    word-wrap: break-word;
+}
+.chat-msg-user {
+    background: var(--accent);
+    color: #FFFFFF;
+    align-self: flex-end;
+    border-bottom-right-radius: 4px;
+}
+.chat-msg-ai {
+    background: var(--bg);
+    color: var(--text);
+    align-self: flex-start;
+    border-bottom-left-radius: 4px;
+}
+.chat-typing { opacity: 0.6; font-style: italic; }
+.chat-plan-updated {
+    margin-top: 8px;
+    padding: 8px 12px;
+    background: #F0FFF8;
+    border: 1px solid var(--success);
+    border-radius: 8px;
+    font-size: 0.8125rem;
+    color: #00A070;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.chat-plan-updated a { color: #00A070; font-weight: 600; }
+
+.chat-input-area {
+    display: flex;
+    gap: 8px;
+    padding: 16px 20px;
+    border-top: 1px solid var(--border);
+}
+.chat-input-area input {
+    flex: 1;
+    padding: 10px 14px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    font-family: 'Inter', sans-serif;
+    font-size: 0.875rem;
+    outline: none;
+}
+.chat-input-area input:focus { border-color: var(--text); }
 
 /* Landing */
 .landing { text-align: center; padding: 80px 0 48px; }
@@ -377,4 +560,11 @@ h1, h2, h3, h4, h5, h6 {
     .day-tabs { gap: 6px; }
 
     .form-section { margin-bottom: 32px; }
+
+    .gym-log-form { flex-direction: column; align-items: stretch; }
+    .gym-log-inputs { flex-direction: row; }
+
+    .chat-sidebar { width: 100%; right: -100%; }
+
+    .progress-chart-container { height: 300px; }
 }

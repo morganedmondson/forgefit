@@ -10,8 +10,13 @@
 
     <div class="gym-exercises">
         {% for ex in day.exercises %}
-        <div class="gym-card {% if ex.is_compound %}gym-card-compound{% endif %}">
-            <div class="gym-card-name">{{ ex.name }}</div>
+        <div class="gym-card {% if ex.is_compound %}gym-card-compound{% endif %}" id="exercise-{{ ex.id }}">
+            <div class="gym-card-top">
+                <div class="gym-card-name">{{ ex.name }}</div>
+                {% if logged_map.get(ex.id) %}
+                    <span class="gym-logged-badge"><i data-feather="check-circle" style="width:16px;height:16px;"></i> Logged</span>
+                {% endif %}
+            </div>
             <div class="gym-card-details">
                 <div class="gym-stat">
                     <span class="gym-stat-value">{{ ex.sets }}</span>
@@ -29,6 +34,23 @@
             {% if ex.notes %}
                 <div class="gym-card-notes">{{ ex.notes }}</div>
             {% endif %}
+            <div class="gym-log-form">
+                <div class="gym-log-inputs">
+                    <div class="gym-log-field">
+                        <label>Actual Reps</label>
+                        <input type="number" id="reps-{{ ex.id }}" min="0" placeholder="{{ ex.reps }}"
+                            value="{{ logged_map[ex.id].actual_reps if logged_map.get(ex.id) else '' }}">
+                    </div>
+                    <div class="gym-log-field">
+                        <label>Actual Weight (kg)</label>
+                        <input type="number" id="weight-{{ ex.id }}" min="0" step="0.5" placeholder="{{ ex.weight_kg }}"
+                            value="{{ logged_map[ex.id].actual_weight_kg if logged_map.get(ex.id) else '' }}">
+                    </div>
+                </div>
+                <button class="btn btn-primary btn-small gym-log-btn" onclick="logExercise({{ ex.id }})">
+                    {{ 'Update' if logged_map.get(ex.id) else 'Log' }}
+                </button>
+            </div>
         </div>
         {% endfor %}
     </div>

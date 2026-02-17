@@ -17,6 +17,7 @@
         <div class="nav-links">
             {% if current_user.is_authenticated %}
                 <a href="{{ url_for('workout.plan') }}">My Plan</a>
+                <a href="{{ url_for('workout.progress') }}">Progress</a>
                 <a href="{{ url_for('profile.edit') }}">Profile</a>
                 <a href="{{ url_for('auth.logout') }}">Log Out</a>
             {% else %}
@@ -37,6 +38,25 @@
 
         {% block content %}{% endblock %}
     </main>
+
+    {% if current_user.is_authenticated %}
+    <button class="chat-toggle" onclick="toggleChat()" title="Chat with AI">
+        <i data-feather="message-circle"></i>
+    </button>
+    <div class="chat-sidebar" id="chatSidebar">
+        <div class="chat-header">
+            <h4>ForgeFit AI</h4>
+            <button class="chat-close" onclick="toggleChat()"><i data-feather="x"></i></button>
+        </div>
+        <div class="chat-messages" id="chatMessages">
+            <div class="chat-msg chat-msg-ai">Hi! I'm your ForgeFit AI trainer. Ask me anything about your plan or request changes.</div>
+        </div>
+        <div class="chat-input-area">
+            <input type="text" id="chatInput" placeholder="Ask about your plan..." onkeydown="if(event.key==='Enter')sendChat()">
+            <button class="btn btn-primary btn-small" onclick="sendChat()">Send</button>
+        </div>
+    </div>
+    {% endif %}
 
     <script src="{{ url_for('static', filename='app.js') }}"></script>
     <script>feather.replace();</script>

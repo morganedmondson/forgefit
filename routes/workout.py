@@ -1,10 +1,13 @@
 import json
+import io
+from collections import defaultdict
 
-from flask import Blueprint, render_template, redirect, url_for, flash
+from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify, send_file
 from flask_login import login_required, current_user
 
-from models import WorkoutPlan
-from ai_engine import generate_plan_with_ai, save_plan_to_db, plan_to_dict
+from app import db
+from models import WorkoutPlan, WorkoutLog, Exercise
+from ai_engine import generate_plan_with_ai, save_plan_to_db, plan_to_dict_with_logs
 
 workout_bp = Blueprint("workout", __name__, url_prefix="/workout")
 
@@ -15,7 +18,6 @@ def plan():
     if not current_user.profile:
         return redirect(url_for("profile.onboarding"))
 
-    # Get latest plan
     latest_plan = WorkoutPlan.query.filter_by(user_id=current_user.id).order_by(
         WorkoutPlan.week_number.desc()
     ).first()
@@ -47,7 +49,137 @@ def day(day_index):
         flash("Day not found.", "error")
         return redirect(url_for("workout.plan"))
 
-    return render_template("workout/day.html", day=workout_day, plan=latest_plan)
+    # Get existing logs for this day's exercises
+    exercise_ids = [ex.id for ex in workout_day.exercises]
+    logs = WorkoutLog.query.filter(
+        WorkoutLog.exercise_id.in_(exercise_ids),
+        WorkoutLog.user_id == current_user.id
+    ).all()
+    logged_map = {log.exercise_id: log for log in logs}
+
+    return render_template("workout/day.html", day=workout_day, plan=latest_plan, logged_map=logged_map)
+
+
+@workout_bp.route("/log", methods=["POST"])
+@login_required
+def log_exercise():
+    data = request.get_json()
+    if not data:
+        return jsonify({"error": "No data provided"}), 400
+
+    exercise_id = data.get("exercise_id")
+    actual_reps = data.get("actual_reps")
+    actual_weight_kg = data.get("actual_weight_kg")
+
+    if not all([exercise_id, actual_reps is not None, actual_weight_kg is not None]):
+        return jsonify({"error": "Missing fields"}), 400
+
+    exercise = Exercise.query.get(exercise_id)
+    if not exercise:
+        return jsonify({"error": "Exercise not found"}), 404
+
+    existing = WorkoutLog.query.filter_by(
+        exercise_id=exercise_id, user_id=current_user.id
+    ).first()
+
+    if existing:
+        existing.actual_reps = int(actual_reps)
+        existing.actual_weight_kg = float(actual_weight_kg)
+    else:
+        log = WorkoutLog(
+            exercise_id=exercise_id,
+            user_id=current_user.id,
+            actual_reps=int(actual_reps),
+            actual_weight_kg=float(actual_weight_kg),
+        )
+        db.session.add(log)
+
+    db.session.commit()
+    return jsonify({"success": True})
+
+
+@workout_bp.route("/progress")
+@login_required
+def progress():
+    logs = db.session.query(WorkoutLog, Exercise).join(
+        Exercise, WorkoutLog.exercise_id == Exercise.id
+    ).filter(
+        WorkoutLog.user_id == current_user.id
+    ).order_by(WorkoutLog.logged_at.asc()).all()
+
+    exercise_data = defaultdict(list)
+    exercise_names = []
+    for log, exercise in logs:
+        name = exercise.name
+        if name not in exercise_names:
+            exercise_names.append(name)
+        exercise_data[name].append({
+            "date": log.logged_at.strftime("%Y-%m-%d"),
+            "weight": log.actual_weight_kg,
+            "reps": log.actual_reps,
+        })
+
+    return render_template(
+        "workout/progress.html",
+        exercise_names=exercise_names,
+        exercise_data=json.dumps(dict(exercise_data)),
+    )
+
+
+@workout_bp.route("/export-pdf")
+@login_required
+def export_pdf():
+    from fpdf import FPDF
+
+    latest_plan = WorkoutPlan.query.filter_by(user_id=current_user.id).order_by(
+        WorkoutPlan.week_number.desc()
+    ).first()
+
+    if not latest_plan:
+        flash("No plan to export.", "error")
+        return redirect(url_for("workout.plan"))
+
+    pdf = FPDF()
+    pdf.set_auto_page_break(auto=True, margin=15)
+    pdf.add_page()
+
+    pdf.set_font("Helvetica", "B", 20)
+    pdf.cell(0, 15, f"ForgeFit - Week {latest_plan.week_number}", ln=True, align="C")
+    pdf.ln(5)
+
+    for day_obj in latest_plan.days:
+        pdf.set_font("Helvetica", "B", 14)
+        pdf.set_fill_color(240, 240, 240)
+        pdf.cell(0, 10, day_obj.label, ln=True, fill=True)
+        pdf.ln(2)
+
+        pdf.set_font("Helvetica", "B", 10)
+        pdf.cell(80, 8, "Exercise", border=1)
+        pdf.cell(25, 8, "Sets", border=1, align="C")
+        pdf.cell(25, 8, "Reps", border=1, align="C")
+        pdf.cell(35, 8, "Weight (kg)", border=1, align="C")
+        pdf.ln()
+
+        pdf.set_font("Helvetica", "", 10)
+        for ex in day_obj.exercises:
+            pdf.cell(80, 8, ex.name[:35], border=1)
+            pdf.cell(25, 8, str(ex.sets), border=1, align="C")
+            pdf.cell(25, 8, str(ex.reps), border=1, align="C")
+            pdf.cell(35, 8, str(ex.weight_kg), border=1, align="C")
+            pdf.ln()
+
+        pdf.ln(5)
+
+    pdf_bytes = pdf.output()
+    buffer = io.BytesIO(pdf_bytes)
+    buffer.seek(0)
+
+    return send_file(
+        buffer,
+        mimetype="application/pdf",
+        as_attachment=True,
+        download_name=f"forgefit_week_{latest_plan.week_number}.pdf",
+    )
 
 
 @workout_bp.route("/next-week", methods=["POST"])
@@ -76,8 +208,7 @@ def next_week():
         "ohp_1rm": profile.ohp_1rm,
     }
 
-    # Include previous plan for progressive overload
-    previous_plan = plan_to_dict(latest_plan) if latest_plan else None
+    previous_plan = plan_to_dict_with_logs(latest_plan, current_user.id) if latest_plan else None
 
     try:
         plan_data = generate_plan_with_ai(data, week_number=next_week_num, previous_plan=previous_plan)

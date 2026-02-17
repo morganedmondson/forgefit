@@ -5,7 +5,7 @@ import re
 import anthropic
 
 from app import db
-from models import WorkoutPlan, WorkoutDay, Exercise
+from models import WorkoutPlan, WorkoutDay, Exercise, WorkoutLog
 
 PLAN_TYPE_LABELS = {
     "push_pull_legs": "Push / Pull / Legs",
@@ -71,12 +71,14 @@ Requirements:
     if previous_plan and week_number > 1:
         prompt += f"""
 
-PROGRESSIVE OVERLOAD — this is week {week_number}. Here is last week's plan:
+PROGRESSIVE OVERLOAD — this is week {week_number}. Here is last week's plan WITH actual logged performance data (if available):
 {json.dumps(previous_plan, indent=2)}
 
-Apply progressive overload:
-- For compound lifts: increase weight by 2.5kg OR add 1 rep per set (alternate as appropriate)
-- For accessories: add 1 rep or slightly increase weight
+Apply progressive overload based on ACTUAL performance:
+- If actual_reps and actual_weight_kg are provided, use those to determine progression (not just prescribed values)
+- If the user hit or exceeded prescribed reps at the prescribed weight, increase weight by 2.5kg
+- If the user fell short of prescribed reps, keep the same weight but adjust reps
+- For accessories: add 1 rep or slightly increase weight based on actual performance
 - Keep the same exercise structure and day labels"""
 
     prompt += """
@@ -165,3 +167,98 @@ def plan_to_dict(plan):
         }
         for day in plan.days
     ]
+
+
+def plan_to_dict_with_logs(plan, user_id):
+    """Convert a WorkoutPlan to a dict that includes actual logged performance data."""
+    exercise_ids = []
+    for day in plan.days:
+        for ex in day.exercises:
+            exercise_ids.append(ex.id)
+
+    logs = WorkoutLog.query.filter(
+        WorkoutLog.exercise_id.in_(exercise_ids),
+        WorkoutLog.user_id == user_id,
+    ).all()
+    log_map = {log.exercise_id: log for log in logs}
+
+    result = []
+    for day in plan.days:
+        day_data = {
+            "day_index": day.day_index,
+            "label": day.label,
+            "exercises": [],
+        }
+        for ex in day.exercises:
+            ex_data = {
+                "name": ex.name,
+                "prescribed_sets": ex.sets,
+                "prescribed_reps": ex.reps,
+                "prescribed_weight_kg": ex.weight_kg,
+                "is_compound": ex.is_compound,
+                "notes": ex.notes or "",
+            }
+            log = log_map.get(ex.id)
+            if log:
+                ex_data["actual_reps"] = log.actual_reps
+                ex_data["actual_weight_kg"] = log.actual_weight_kg
+            day_data["exercises"].append(ex_data)
+        result.append(day_data)
+    return result
+
+
+def chat_with_ai(message, plan, profile):
+    """Send a chat message to Claude with the user's plan context. Returns reply text and optionally a modified plan."""
+    api_key = os.environ.get("ANTHROPIC_API_KEY")
+    if not api_key:
+        raise ValueError("ANTHROPIC_API_KEY environment variable is not set.")
+
+    client = anthropic.Anthropic(api_key=api_key)
+
+    plan_dict = plan_to_dict(plan) if plan else []
+    plan_type_desc = PLAN_TYPE_LABELS.get(profile.plan_type, profile.plan_type) if profile else "Unknown"
+    goal_desc = GOAL_LABELS.get(profile.goal, profile.goal) if profile else "Unknown"
+
+    system_prompt = f"""You are ForgeFit AI, a knowledgeable personal trainer assistant. The user has an active workout plan.
+
+User profile:
+- Height: {profile.height_cm}cm, Weight: {profile.weight_kg}kg
+- Goal: {goal_desc}
+- Plan type: {plan_type_desc}
+- 1RM - Squat: {profile.squat_1rm}kg, Bench: {profile.bench_1rm}kg, Deadlift: {profile.deadlift_1rm}kg, OHP: {profile.ohp_1rm}kg
+
+Current plan (Week {plan.week_number}):
+{json.dumps(plan_dict, indent=2)}
+
+Instructions:
+- Answer fitness questions helpfully and concisely.
+- If the user asks to MODIFY their plan (e.g. "make squats heavier", "swap bench for incline press", "add more arm work"), return the FULL modified plan as a JSON array at the end of your reply, wrapped in <plan_json>...</plan_json> tags.
+- The JSON must follow the exact same format as the current plan shown above.
+- If the user is just chatting or asking questions (not requesting changes), do NOT include plan JSON.
+- Keep responses concise (2-4 sentences max for conversational replies)."""
+
+    response = client.messages.create(
+        model="claude-sonnet-4-5-20250929",
+        max_tokens=4096,
+        system=system_prompt,
+        messages=[{"role": "user", "content": message}],
+    )
+
+    reply_text = response.content[0].text.strip()
+
+    # Check if reply contains a modified plan
+    plan_data = None
+    import re as _re
+    match = _re.search(r"<plan_json>(.*?)</plan_json>", reply_text, _re.DOTALL)
+    if match:
+        try:
+            plan_json_str = match.group(1).strip()
+            plan_json_str = _re.sub(r"^```(?:json)?\s*", "", plan_json_str)
+            plan_json_str = _re.sub(r"\s*```$", "", plan_json_str)
+            plan_data = json.loads(plan_json_str)
+        except (json.JSONDecodeError, ValueError):
+            plan_data = None
+        # Remove the plan JSON from the visible reply
+        reply_text = reply_text[:match.start()].strip()
+
+    return reply_text, plan_data

@@ -52,6 +52,7 @@
     <form method="POST" action="{{ url_for('workout.next_week') }}" class="inline-form">
         <button type="submit" class="btn btn-primary btn-large">Generate Next Week</button>
     </form>
+    <a href="{{ url_for('workout.export_pdf') }}" class="btn btn-secondary"><i data-feather="download" style="width:14px;height:14px;vertical-align:-2px;"></i> Export PDF</a>
     <a href="{{ url_for('profile.edit') }}" class="btn btn-secondary">Edit Profile</a>
 </div>
 {% endblock %}
