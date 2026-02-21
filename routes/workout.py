@@ -6,7 +6,7 @@ from flask import Blueprint, render_template, redirect, url_for, flash, request,
 from flask_login import login_required, current_user
 
 from app import db
-from models import WorkoutPlan, WorkoutLog, Exercise
+from models import WorkoutPlan, WorkoutLog, Exercise, ExerciseNote
 from ai_engine import generate_plan_with_ai, save_plan_to_db, plan_to_dict_with_logs
 
 workout_bp = Blueprint("workout", __name__, url_prefix="/workout")
@@ -57,7 +57,21 @@ def day(day_index):
     ).all()
     logged_map = {log.exercise_id: log for log in logs}
 
-    return render_template("workout/day.html", day=workout_day, plan=latest_plan, logged_map=logged_map)
+    # Get user notes for exercises in this day
+    exercise_names = [ex.name.lower().strip() for ex in workout_day.exercises]
+    user_notes = ExerciseNote.query.filter(
+        ExerciseNote.user_id == current_user.id,
+        ExerciseNote.exercise_name.in_(exercise_names),
+    ).all()
+    notes_map = {n.exercise_name: n.note for n in user_notes}
+
+    return render_template(
+        "workout/day.html",
+        day=workout_day,
+        plan=latest_plan,
+        logged_map=logged_map,
+        notes_map=notes_map,
+    )
 
 
 @workout_bp.route("/log", methods=["POST"])
@@ -93,6 +107,41 @@ def log_exercise():
             actual_weight_kg=float(actual_weight_kg),
         )
         db.session.add(log)
+
+    db.session.commit()
+    return jsonify({"success": True})
+
+
+@workout_bp.route("/note", methods=["POST"])
+@login_required
+def save_note():
+    data = request.get_json()
+    if not data:
+        return jsonify({"error": "No data provided"}), 400
+
+    exercise_name = data.get("exercise_name", "").strip().lower()
+    note = data.get("note", "").strip()
+
+    if not exercise_name:
+        return jsonify({"error": "Missing exercise name"}), 400
+
+    # Upsert: update if exists, create if not
+    existing = ExerciseNote.query.filter_by(
+        user_id=current_user.id,
+        exercise_name=exercise_name,
+    ).first()
+
+    if existing:
+        existing.note = note
+        from datetime import datetime
+        existing.updated_at = datetime.utcnow()
+    elif note:  # Only create if there's actually a note
+        new_note = ExerciseNote(
+            user_id=current_user.id,
+            exercise_name=exercise_name,
+            note=note,
+        )
+        db.session.add(new_note)
 
     db.session.commit()
     return jsonify({"success": True})
@@ -196,6 +245,10 @@ def next_week():
     next_week_num = current_week + 1
 
     profile = current_user.profile
+    # Fetch all user exercise notes for AI context
+    all_notes = ExerciseNote.query.filter_by(user_id=current_user.id).all()
+    exercise_notes = {n.exercise_name: n.note for n in all_notes}
+
     data = {
         "height_cm": profile.height_cm,
         "weight_kg": profile.weight_kg,
@@ -206,6 +259,8 @@ def next_week():
         "bench_1rm": profile.bench_1rm,
         "deadlift_1rm": profile.deadlift_1rm,
         "ohp_1rm": profile.ohp_1rm,
+        "gym_equipment": profile.gym_equipment or "",
+        "exercise_notes": exercise_notes,
     }
 
     previous_plan = plan_to_dict_with_logs(latest_plan, current_user.id) if latest_plan else None

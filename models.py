@@ -15,6 +15,7 @@ class User(UserMixin, db.Model):
     profile = db.relationship("Profile", backref="user", uselist=False, cascade="all, delete-orphan")
     plans = db.relationship("WorkoutPlan", backref="user", cascade="all, delete-orphan", order_by="WorkoutPlan.week_number.desc()")
     food_logs = db.relationship("FoodLog", backref="user", cascade="all, delete-orphan")
+    exercise_notes = db.relationship("ExerciseNote", backref="user", cascade="all, delete-orphan")
 
     def set_password(self, password):
         self.password_hash = generate_password_hash(password, method="pbkdf2:sha256")
@@ -35,6 +36,7 @@ class Profile(db.Model):
     bench_1rm = db.Column(db.Float, nullable=False)
     deadlift_1rm = db.Column(db.Float, nullable=False)
     ohp_1rm = db.Column(db.Float, nullable=False)
+    gym_equipment = db.Column(db.String(100), default="")
 
 
 class WorkoutPlan(db.Model):
@@ -65,6 +67,7 @@ class Exercise(db.Model):
     weight_kg = db.Column(db.Float, nullable=False)
     is_compound = db.Column(db.Boolean, default=False)
     notes = db.Column(db.String(200), default="")
+    muscle_group = db.Column(db.String(30), default="")
 
     logs = db.relationship("WorkoutLog", backref="exercise", cascade="all, delete-orphan")
 
@@ -76,6 +79,15 @@ class WorkoutLog(db.Model):
     actual_reps = db.Column(db.Integer, nullable=False)
     actual_weight_kg = db.Column(db.Float, nullable=False)
     logged_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+
+class ExerciseNote(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
+    exercise_name = db.Column(db.String(100), nullable=False)  # normalised lowercase
+    note = db.Column(db.String(500), nullable=False)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow)
+    __table_args__ = (db.UniqueConstraint("user_id", "exercise_name"),)
 
 
 class FoodLog(db.Model):

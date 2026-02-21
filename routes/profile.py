@@ -23,6 +23,7 @@ def onboarding():
                 "bench_1rm": float(request.form["bench_1rm"]),
                 "deadlift_1rm": float(request.form["deadlift_1rm"]),
                 "ohp_1rm": float(request.form["ohp_1rm"]),
+                "gym_equipment": request.form.get("gym_equipment", "").strip(),
             }
         except (KeyError, ValueError):
             flash("Please fill in all fields with valid numbers.", "error")
@@ -71,6 +72,7 @@ def edit():
             profile.bench_1rm = float(request.form["bench_1rm"])
             profile.deadlift_1rm = float(request.form["deadlift_1rm"])
             profile.ohp_1rm = float(request.form["ohp_1rm"])
+            profile.gym_equipment = request.form.get("gym_equipment", "").strip()
             db.session.commit()
         except (KeyError, ValueError):
             flash("Please fill in all fields with valid numbers.", "error")
@@ -87,6 +89,7 @@ def edit():
             "bench_1rm": profile.bench_1rm,
             "deadlift_1rm": profile.deadlift_1rm,
             "ohp_1rm": profile.ohp_1rm,
+            "gym_equipment": profile.gym_equipment or "",
         }
 
         try:

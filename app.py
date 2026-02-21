@@ -48,5 +48,22 @@ def create_app():
 
     with app.app_context():
         db.create_all()
+        _migrate_db()
 
     return app
+
+
+def _migrate_db():
+    """Add new columns to existing tables without dropping data."""
+    from sqlalchemy import text
+    migrations = [
+        "ALTER TABLE profile ADD COLUMN gym_equipment VARCHAR(100) DEFAULT ''",
+        "ALTER TABLE exercise ADD COLUMN muscle_group VARCHAR(30) DEFAULT ''",
+    ]
+    for sql in migrations:
+        try:
+            with db.engine.connect() as conn:
+                conn.execute(text(sql))
+                conn.commit()
+        except Exception:
+            pass  # Column already exists

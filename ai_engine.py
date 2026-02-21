@@ -5,7 +5,7 @@ import re
 import anthropic
 
 from app import db
-from models import WorkoutPlan, WorkoutDay, Exercise, WorkoutLog
+from models import WorkoutPlan, WorkoutDay, Exercise, WorkoutLog, ExerciseNote
 
 PLAN_TYPE_LABELS = {
     "push_pull_legs": "Push / Pull / Legs",
@@ -48,6 +48,9 @@ def generate_plan_with_ai(profile_data, week_number, previous_plan=None):
     plan_type_desc = PLAN_TYPE_LABELS.get(profile_data["plan_type"], profile_data["plan_type"])
     plan_type_instr = PLAN_TYPE_INSTRUCTIONS.get(profile_data["plan_type"], "")
 
+    gym_equipment = profile_data.get("gym_equipment") or "standard gym equipment"
+    exercise_notes = profile_data.get("exercise_notes", {})
+
     prompt = f"""Generate a {profile_data['days_per_week']}-day weekly workout plan.
 
 User profile:
@@ -56,6 +59,7 @@ User profile:
 - Goal: {goal_desc}
 - Plan type: {plan_type_desc}
 - 1RM - Squat: {profile_data['squat_1rm']}kg, Bench Press: {profile_data['bench_1rm']}kg, Deadlift: {profile_data['deadlift_1rm']}kg, Overhead Press: {profile_data['ohp_1rm']}kg
+- Gym equipment: {gym_equipment}
 
 Plan type instructions: {plan_type_instr}
 
@@ -66,7 +70,16 @@ Requirements:
 - Calculate working weights as percentages of the user's 1RM for compound lifts
 - Round all weights to the nearest 2.5kg
 - Include appropriate sets and reps for the user's goal
-- Mark compound movements as is_compound: true"""
+- Mark compound movements as is_compound: true
+- For EVERY exercise, set "muscle_group" to one of: chest, back, legs, shoulders, arms, core, glutes, full_body
+- For machine exercises (cable machines, adjustable benches, leg press, lat pulldown, etc.), include specific setup instructions in "notes" (e.g. "Set bench to position 3 — roughly 30° incline"). Reference the equipment brand ({gym_equipment}) where relevant."""
+
+    if exercise_notes:
+        notes_list = "\n".join(f"- {name}: {note}" for name, note in exercise_notes.items())
+        prompt += f"""
+
+User notes on specific exercises (account for these when programming):
+{notes_list}"""
 
     if previous_plan and week_number > 1:
         prompt += f"""
@@ -89,8 +102,8 @@ Return ONLY valid JSON — no markdown, no explanation. Use this exact format:
     "day_index": 0,
     "label": "Day Name",
     "exercises": [
-      {"name": "Exercise Name", "sets": 4, "reps": 8, "weight_kg": 70.0, "is_compound": true, "notes": ""},
-      {"name": "Exercise Name", "sets": 3, "reps": 12, "weight_kg": 20.0, "is_compound": false, "notes": ""}
+      {"name": "Exercise Name", "sets": 4, "reps": 8, "weight_kg": 70.0, "is_compound": true, "muscle_group": "chest", "notes": "Set bench to position 3 — roughly 30° incline"},
+      {"name": "Exercise Name", "sets": 3, "reps": 12, "weight_kg": 20.0, "is_compound": false, "muscle_group": "arms", "notes": ""}
     ]
   }
 ]"""
@@ -141,6 +154,7 @@ def save_plan_to_db(user_id, week_number, plan_data):
                 weight_kg=float(ex_data["weight_kg"]),
                 is_compound=bool(ex_data.get("is_compound", False)),
                 notes=ex_data.get("notes", ""),
+                muscle_group=ex_data.get("muscle_group", ""),
             )
             db.session.add(exercise)
 
@@ -170,17 +184,27 @@ def plan_to_dict(plan):
 
 
 def plan_to_dict_with_logs(plan, user_id):
-    """Convert a WorkoutPlan to a dict that includes actual logged performance data."""
+    """Convert a WorkoutPlan to a dict that includes actual logged performance and user notes."""
     exercise_ids = []
+    exercise_names = []
     for day in plan.days:
         for ex in day.exercises:
             exercise_ids.append(ex.id)
+            name_key = ex.name.lower().strip()
+            if name_key not in exercise_names:
+                exercise_names.append(name_key)
 
     logs = WorkoutLog.query.filter(
         WorkoutLog.exercise_id.in_(exercise_ids),
         WorkoutLog.user_id == user_id,
     ).all()
     log_map = {log.exercise_id: log for log in logs}
+
+    user_notes = ExerciseNote.query.filter(
+        ExerciseNote.user_id == user_id,
+        ExerciseNote.exercise_name.in_(exercise_names),
+    ).all()
+    notes_map = {n.exercise_name: n.note for n in user_notes}
 
     result = []
     for day in plan.days:
@@ -202,6 +226,9 @@ def plan_to_dict_with_logs(plan, user_id):
             if log:
                 ex_data["actual_reps"] = log.actual_reps
                 ex_data["actual_weight_kg"] = log.actual_weight_kg
+            user_note = notes_map.get(ex.name.lower().strip())
+            if user_note:
+                ex_data["user_note"] = user_note
             day_data["exercises"].append(ex_data)
         result.append(day_data)
     return result

@@ -373,6 +373,85 @@ h1, h2, h3, h4, h5, h6 {
 .gym-log-field input:focus { border-color: var(--text); }
 .gym-log-btn { white-space: nowrap; }
 
+/* Muscle badges */
+.muscle-badge {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    line-height: 1.6;
+}
+.muscle-chest { background: #FFF0F0; color: #C0392B; }
+.muscle-back { background: #EBF5FB; color: #1A5276; }
+.muscle-legs { background: #EAFAF1; color: #1E8449; }
+.muscle-shoulders { background: #FEFBEA; color: #9A7D0A; }
+.muscle-arms { background: #F5EEF8; color: #6C3483; }
+.muscle-core { background: #FEF9E7; color: #B7770D; }
+.muscle-glutes { background: #F9EBEA; color: #922B21; }
+.muscle-full_body { background: #EAF4FB; color: #154360; }
+.muscle-cardio { background: #F0F9F0; color: #1A6622; }
+
+/* Tutorial link */
+.gym-tutorial-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 0.8125rem;
+    color: var(--text-muted);
+    text-decoration: none;
+    margin-bottom: 12px;
+    transition: color 0.15s ease;
+}
+.gym-tutorial-btn:hover { color: var(--text); }
+.gym-tutorial-btn svg { width: 14px; height: 14px; flex-shrink: 0; }
+
+/* Setup notes (machine guidance) */
+.gym-setup-notes {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 12px;
+    margin-bottom: 14px;
+    font-size: 0.8125rem;
+    color: var(--text-muted);
+    line-height: 1.5;
+}
+.gym-setup-notes svg { width: 14px; height: 14px; flex-shrink: 0; margin-top: 2px; }
+
+/* User exercise notes */
+.gym-user-notes { margin-top: 14px; border-top: 1px solid var(--border); padding-top: 14px; }
+.gym-user-notes-label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-muted);
+    margin-bottom: 6px;
+}
+.gym-user-notes textarea {
+    width: 100%;
+    padding: 10px 12px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    font-family: 'Inter', sans-serif;
+    font-size: 0.875rem;
+    line-height: 1.5;
+    resize: none;
+    outline: none;
+    transition: border-color 0.15s ease;
+    min-height: 72px;
+}
+.gym-user-notes textarea:focus { border-color: var(--text); }
+.gym-user-notes textarea::placeholder { color: var(--text-muted); }
+
 /* Progress page */
 .progress-page { max-width: 800px; margin: 0 auto; }
 .progress-controls { margin-bottom: 24px; max-width: 300px; }

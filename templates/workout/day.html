@@ -11,12 +11,27 @@
     <div class="gym-exercises">
         {% for ex in day.exercises %}
         <div class="gym-card {% if ex.is_compound %}gym-card-compound{% endif %}" id="exercise-{{ ex.id }}">
+
+            <!-- Header: name + muscle badge + logged status -->
             <div class="gym-card-top">
-                <div class="gym-card-name">{{ ex.name }}</div>
+                <div>
+                    <div class="gym-card-name">{{ ex.name }}</div>
+                    {% if ex.muscle_group %}
+                        <span class="muscle-badge muscle-{{ ex.muscle_group }}">{{ ex.muscle_group | replace('_', ' ') | title }}</span>
+                    {% endif %}
+                </div>
                 {% if logged_map.get(ex.id) %}
                     <span class="gym-logged-badge"><i data-feather="check-circle" style="width:16px;height:16px;"></i> Logged</span>
                 {% endif %}
             </div>
+
+            <!-- Tutorial link -->
+            <a href="https://www.youtube.com/results?search_query={{ ex.name | urlencode }}+how+to+tutorial"
+               target="_blank" rel="noopener" class="gym-tutorial-btn">
+                <i data-feather="play-circle" style="width:14px;height:14px;"></i> Watch Tutorial
+            </a>
+
+            <!-- Sets / Reps / Weight -->
             <div class="gym-card-details">
                 <div class="gym-stat">
                     <span class="gym-stat-value">{{ ex.sets }}</span>
@@ -31,9 +46,13 @@
                     <span class="gym-stat-label">Weight</span>
                 </div>
             </div>
+
+            <!-- AI setup notes (e.g. bench angle, machine settings) -->
             {% if ex.notes %}
-                <div class="gym-card-notes">{{ ex.notes }}</div>
+                <div class="gym-card-notes"><i data-feather="info" style="width:12px;height:12px;vertical-align:-1px;margin-right:4px;"></i>{{ ex.notes }}</div>
             {% endif %}
+
+            <!-- Log actual reps/weight -->
             <div class="gym-log-form">
                 <div class="gym-log-inputs">
                     <div class="gym-log-field">
@@ -51,6 +70,16 @@
                     {{ 'Update' if logged_map.get(ex.id) else 'Log' }}
                 </button>
             </div>
+
+            <!-- Personal note — persists across weeks and feeds into AI -->
+            <div class="gym-user-notes">
+                <label class="gym-user-notes-label">Personal note</label>
+                <textarea id="note-{{ ex.id }}"
+                          placeholder="e.g. too heavy, use cable instead, felt great at this weight..."
+                          onblur="saveExerciseNote({{ ex.id }}, this.dataset.name)">{{ notes_map.get(ex.name.lower(), '') }}</textarea>
+                <script>document.getElementById('note-{{ ex.id }}').dataset.name = {{ ex.name | tojson }};</script>
+            </div>
+
         </div>
         {% endfor %}
     </div>

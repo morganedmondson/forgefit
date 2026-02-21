@@ -285,6 +285,19 @@ function updateTotals(cal, pro, carbs, fat) {
     add("total-fat", fat);
 }
 
+/* Exercise Notes */
+function saveExerciseNote(exerciseId, exerciseName) {
+    var textarea = document.getElementById("note-" + exerciseId);
+    if (!textarea) return;
+    var note = textarea.value;
+    fetch("/workout/note", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ exercise_id: exerciseId, exercise_name: exerciseName, note: note }),
+    });
+    // Silent save on blur — no feedback needed
+}
+
 // Close food search dropdown when clicking outside
 document.addEventListener("click", function (e) {
     var wrap = document.querySelector(".food-search-wrap");

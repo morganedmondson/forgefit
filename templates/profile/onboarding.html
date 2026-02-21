@@ -146,6 +146,17 @@
             </div>
         </div>
 
+        <div class="form-section">
+            <h3>Your Gym Equipment</h3>
+            <p class="form-hint">We'll use this to give you specific machine settings in your plan — e.g. bench angle, seat position, cable attachment.</p>
+            <div class="form-group">
+                <label for="gym_equipment">Equipment / Brand (optional)</label>
+                <input type="text" id="gym_equipment" name="gym_equipment"
+                       placeholder="e.g. Life Fitness, Technogym, basic barbells &amp; dumbbells"
+                       value="{{ profile.gym_equipment if profile else '' }}">
+            </div>
+        </div>
+
         <button type="submit" class="btn btn-primary btn-full btn-large">
             {% if editing %}Update & Regenerate Plan{% else %}Generate My Plan{% endif %}
         </button>
