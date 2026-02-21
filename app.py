@@ -59,6 +59,16 @@ def _migrate_db():
     migrations = [
         "ALTER TABLE profile ADD COLUMN gym_equipment VARCHAR(100) DEFAULT ''",
         "ALTER TABLE exercise ADD COLUMN muscle_group VARCHAR(30) DEFAULT ''",
+        # Feature 1: macro goals
+        "ALTER TABLE profile ADD COLUMN age INTEGER",
+        "ALTER TABLE profile ADD COLUMN sex VARCHAR(10)",
+        "ALTER TABLE profile ADD COLUMN activity_level VARCHAR(20) DEFAULT 'moderate'",
+        "ALTER TABLE profile ADD COLUMN calorie_target FLOAT DEFAULT 0",
+        "ALTER TABLE profile ADD COLUMN protein_target_g FLOAT DEFAULT 0",
+        "ALTER TABLE profile ADD COLUMN carbs_target_g FLOAT DEFAULT 0",
+        "ALTER TABLE profile ADD COLUMN fat_target_g FLOAT DEFAULT 0",
+        # Feature 2: meal type on food log
+        "ALTER TABLE food_log ADD COLUMN meal_type VARCHAR(20) DEFAULT 'general'",
     ]
     for sql in migrations:
         try:

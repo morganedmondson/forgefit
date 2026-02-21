@@ -19,7 +19,10 @@
     <div class="day-card">
         <div class="day-card-header">
             <h3>{{ day.label }}</h3>
-            <a href="{{ url_for('workout.day', day_index=day.day_index) }}" class="btn btn-secondary btn-small">Gym View</a>
+            <div style="display:flex; gap:8px;">
+                <a href="{{ url_for('workout.session', day_id=day.id) }}" class="btn btn-primary btn-small">▶ Start Workout</a>
+                <a href="{{ url_for('workout.day', day_index=day.day_index) }}" class="btn btn-secondary btn-small">Gym View</a>
+            </div>
         </div>
         <table class="exercise-table">
             <thead>

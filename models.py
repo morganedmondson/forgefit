@@ -16,6 +16,8 @@ class User(UserMixin, db.Model):
     plans = db.relationship("WorkoutPlan", backref="user", cascade="all, delete-orphan", order_by="WorkoutPlan.week_number.desc()")
     food_logs = db.relationship("FoodLog", backref="user", cascade="all, delete-orphan")
     exercise_notes = db.relationship("ExerciseNote", backref="user", cascade="all, delete-orphan")
+    custom_foods = db.relationship("CustomFood", backref="user", cascade="all, delete-orphan")
+    water_logs = db.relationship("WaterLog", backref="user", cascade="all, delete-orphan")
 
     def set_password(self, password):
         self.password_hash = generate_password_hash(password, method="pbkdf2:sha256")
@@ -30,13 +32,21 @@ class Profile(db.Model):
     height_cm = db.Column(db.Float, nullable=False)
     weight_kg = db.Column(db.Float, nullable=False)
     goal = db.Column(db.String(20), nullable=False)  # muscle, strength, general
-    plan_type = db.Column(db.String(30), nullable=False)  # push_pull_legs, upper_lower, full_body, menstrual_cycle, bro_split
+    plan_type = db.Column(db.String(30), nullable=False)
     days_per_week = db.Column(db.Integer, nullable=False)
     squat_1rm = db.Column(db.Float, nullable=False)
     bench_1rm = db.Column(db.Float, nullable=False)
     deadlift_1rm = db.Column(db.Float, nullable=False)
     ohp_1rm = db.Column(db.Float, nullable=False)
     gym_equipment = db.Column(db.String(100), default="")
+    # Macro goal fields
+    age = db.Column(db.Integer, nullable=True)
+    sex = db.Column(db.String(10), nullable=True)           # 'male', 'female'
+    activity_level = db.Column(db.String(20), default="moderate")
+    calorie_target = db.Column(db.Float, default=0)
+    protein_target_g = db.Column(db.Float, default=0)
+    carbs_target_g = db.Column(db.Float, default=0)
+    fat_target_g = db.Column(db.Float, default=0)
 
 
 class WorkoutPlan(db.Model):
@@ -99,4 +109,22 @@ class FoodLog(db.Model):
     protein_g = db.Column(db.Float, nullable=False)
     carbs_g = db.Column(db.Float, nullable=False)
     fat_g = db.Column(db.Float, nullable=False)
+    meal_type = db.Column(db.String(20), default="general")  # breakfast, lunch, dinner, snacks, general
+    logged_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+
+class CustomFood(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
+    name = db.Column(db.String(200), nullable=False)
+    cal_100g = db.Column(db.Float, nullable=False)
+    protein_100g = db.Column(db.Float, nullable=False)
+    carbs_100g = db.Column(db.Float, nullable=False)
+    fat_100g = db.Column(db.Float, nullable=False)
+
+
+class WaterLog(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
+    amount_ml = db.Column(db.Integer, nullable=False)
     logged_at = db.Column(db.DateTime, default=datetime.utcnow)

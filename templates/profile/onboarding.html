@@ -19,6 +19,39 @@
                     <input type="number" id="weight_kg" name="weight_kg" min="30" max="300" step="0.1"
                            value="{{ profile.weight_kg if profile else '' }}" required>
                 </div>
+                <div class="form-group">
+                    <label for="age">Age <span class="form-hint-inline">(optional — for calorie targets)</span></label>
+                    <input type="number" id="age" name="age" min="13" max="99"
+                           value="{{ profile.age if profile and profile.age else '' }}"
+                           placeholder="e.g. 28">
+                </div>
+            </div>
+            <div class="form-row" style="margin-top:0; align-items:flex-start;">
+                <div class="form-group">
+                    <label>Sex</label>
+                    <div class="radio-cards radio-cards-inline" style="margin-top:6px;">
+                        <label class="radio-card radio-card-small">
+                            <input type="radio" name="sex" value="male"
+                                   {{ 'checked' if profile and profile.sex == 'male' else '' }}>
+                            <div class="radio-card-body"><strong>Male</strong></div>
+                        </label>
+                        <label class="radio-card radio-card-small">
+                            <input type="radio" name="sex" value="female"
+                                   {{ 'checked' if profile and profile.sex == 'female' else '' }}>
+                            <div class="radio-card-body"><strong>Female</strong></div>
+                        </label>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="activity_level">Activity Level</label>
+                    <select id="activity_level" name="activity_level" class="form-select">
+                        <option value="sedentary" {{ 'selected' if profile and profile.activity_level == 'sedentary' else '' }}>Sedentary (desk job, little exercise)</option>
+                        <option value="light" {{ 'selected' if profile and profile.activity_level == 'light' else '' }}>Light (1–3 days/week)</option>
+                        <option value="moderate" {{ 'selected' if not profile or not profile.activity_level or profile.activity_level == 'moderate' else '' }}>Moderate (3–5 days/week)</option>
+                        <option value="active" {{ 'selected' if profile and profile.activity_level == 'active' else '' }}>Active (6–7 days/week)</option>
+                        <option value="very_active" {{ 'selected' if profile and profile.activity_level == 'very_active' else '' }}>Very Active (physical job + training)</option>
+                    </select>
+                </div>
             </div>
         </div>
 

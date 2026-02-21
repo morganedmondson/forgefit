@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+    <title>{{ day.label }} — ForgeFit</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/feather-icons"></script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <style>
+        body { background: var(--bg); overflow: hidden; }
+        .session-wrap { display: flex; flex-direction: column; height: 100vh; max-width: 540px; margin: 0 auto; }
+
+        /* Header */
+        .session-header { display: flex; align-items: center; justify-content: space-between; padding: 12px 20px; border-bottom: 1px solid var(--border); background: var(--surface); flex-shrink: 0; }
+        .session-back { display: flex; align-items: center; gap: 6px; font-size: 0.875rem; color: var(--text-muted); text-decoration: none; }
+        .session-back:hover { color: var(--text); }
+        .session-day-label { font-weight: 600; font-size: 0.9375rem; }
+        .session-progress-text { font-size: 0.8125rem; color: var(--text-muted); }
+
+        /* Progress bar strip */
+        .session-progress-strip { height: 3px; background: var(--border); flex-shrink: 0; }
+        .session-progress-fill { height: 100%; background: var(--text); transition: width 0.3s ease; }
+
+        /* Views */
+        .session-view { flex: 1; overflow-y: auto; display: flex; flex-direction: column; padding: 20px; gap: 16px; }
+        .session-view.hidden { display: none; }
+
+        /* Exercise card */
+        .session-exercise-card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 24px; }
+        .session-ex-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; }
+        .session-ex-name { font-size: 1.5rem; font-weight: 700; letter-spacing: -0.02em; line-height: 1.2; flex: 1; }
+        .session-targets-row { display: flex; gap: 24px; margin: 16px 0; }
+        .session-target-item { text-align: center; }
+        .session-target-value { display: block; font-size: 1.75rem; font-weight: 700; letter-spacing: -0.02em; }
+        .session-target-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted); font-weight: 500; }
+
+        /* Log card */
+        .session-log-card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 20px; }
+        .session-log-card h3 { font-size: 0.9375rem; margin-bottom: 14px; color: var(--text-muted); font-weight: 500; }
+        .session-log-row { display: flex; gap: 12px; margin-bottom: 14px; }
+        .session-log-field { flex: 1; }
+        .session-log-field label { display: block; font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted); margin-bottom: 4px; }
+        .session-log-field input { width: 100%; padding: 14px 12px; font-size: 1.125rem; font-weight: 600; background: var(--bg); border: 1px solid var(--border); border-radius: 10px; color: var(--text); font-family: 'Inter', sans-serif; outline: none; text-align: center; }
+        .session-log-field input:focus { border-color: var(--text); }
+        .session-note-field label { display: block; font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted); margin-bottom: 4px; }
+        .session-note-field textarea { width: 100%; padding: 10px 12px; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-family: 'Inter', sans-serif; font-size: 0.875rem; resize: none; outline: none; min-height: 60px; }
+
+        /* Footer */
+        .session-footer { display: flex; gap: 12px; padding: 16px 20px; border-top: 1px solid var(--border); background: var(--surface); flex-shrink: 0; }
+        .session-footer .btn { flex: 1; padding: 14px; font-size: 1rem; }
+        .session-next-btn { background: var(--text); color: white; }
+
+        /* Rest timer view */
+        .session-rest-view { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 24px; padding: 40px 20px; }
+        .session-rest-view.hidden { display: none; }
+        .session-rest-label { font-size: 0.875rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-muted); }
+        .session-timer-display { font-size: 5rem; font-weight: 700; letter-spacing: -0.04em; color: var(--text); line-height: 1; }
+        .session-timer-subtext { font-size: 0.875rem; color: var(--text-muted); }
+        .session-rest-controls { display: flex; flex-direction: column; align-items: center; gap: 8px; width: 100%; max-width: 280px; }
+        .session-rest-controls input[type=range] { width: 100%; accent-color: var(--text); }
+        .session-rest-btns { display: flex; gap: 12px; width: 100%; max-width: 320px; }
+        .session-rest-btns .btn { flex: 1; }
+
+        /* Complete view */
+        .session-complete-view { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 24px; padding: 40px 20px; text-align: center; }
+        .session-complete-view.hidden { display: none; }
+        .session-complete-icon { font-size: 4rem; }
+        .session-complete-view h2 { font-size: 2rem; font-weight: 700; letter-spacing: -0.02em; }
+        .session-stats-row { display: flex; gap: 40px; }
+        .session-stat-item { text-align: center; }
+        .session-stat-value { display: block; font-size: 2rem; font-weight: 700; letter-spacing: -0.02em; }
+        .session-stat-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted); font-weight: 500; }
+        .session-summary-list { text-align: left; width: 100%; max-width: 360px; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 8px; }
+        .session-summary-item { display: flex; justify-content: space-between; font-size: 0.875rem; }
+        .session-summary-item .ex-name { font-weight: 500; }
+        .session-summary-item .ex-result { color: var(--text-muted); }
+
+        /* Replace modal */
+        .session-modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: flex; align-items: flex-end; z-index: 200; }
+        .session-modal-overlay.hidden { display: none; }
+        .session-modal { background: var(--surface); border-radius: 16px 16px 0 0; padding: 24px; width: 100%; max-height: 70vh; overflow-y: auto; }
+        .session-modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+        .session-modal-header h3 { font-size: 1.125rem; font-weight: 600; }
+        .session-modal-close { background: none; border: none; cursor: pointer; color: var(--text-muted); padding: 4px; }
+        .session-modal-sub { font-size: 0.875rem; color: var(--text-muted); margin-bottom: 16px; }
+        .session-alt-list { display: flex; flex-direction: column; gap: 8px; }
+        .session-alt-item { padding: 14px 16px; background: var(--bg); border: 1px solid var(--border); border-radius: 10px; cursor: pointer; font-weight: 500; font-size: 0.9375rem; transition: background 0.15s; }
+        .session-alt-item:hover { background: var(--border); }
+
+        /* Setup note */
+        .session-setup-note { display: flex; gap: 8px; font-size: 0.8125rem; color: var(--text-muted); background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; line-height: 1.5; }
+    </style>
+</head>
+<body>
+<div class="session-wrap">
+
+    <!-- Header -->
+    <div class="session-header">
+        <a href="{{ plan_url }}" class="session-back">
+            <i data-feather="arrow-left" style="width:16px;height:16px;"></i> Plan
+        </a>
+        <span class="session-day-label">{{ day.label }}</span>
+        <span class="session-progress-text" id="sessionProgressText">1 / {{ day.exercises | length }}</span>
+    </div>
+
+    <!-- Progress strip -->
+    <div class="session-progress-strip">
+        <div class="session-progress-fill" id="sessionProgressFill" style="width:0%"></div>
+    </div>
+
+    <!-- Exercise view -->
+    <div class="session-view" id="exerciseView">
+        <div class="session-exercise-card">
+            <div class="session-ex-top">
+                <h1 class="session-ex-name" id="exName">—</h1>
+                <span class="muscle-badge" id="exMuscle" style="margin-left:10px; flex-shrink:0;"></span>
+            </div>
+            <a id="exTutorial" href="#" target="_blank" rel="noopener" class="gym-tutorial-btn" style="margin-top:4px; display:inline-flex;">
+                <i data-feather="play-circle" style="width:14px;height:14px;"></i> Watch Tutorial
+            </a>
+            <div class="session-targets-row" id="exTargets">
+                <div class="session-target-item">
+                    <span class="session-target-value" id="exSets">—</span>
+                    <span class="session-target-label">Sets</span>
+                </div>
+                <div class="session-target-item">
+                    <span class="session-target-value" id="exReps">—</span>
+                    <span class="session-target-label">Reps</span>
+                </div>
+                <div class="session-target-item">
+                    <span class="session-target-value" id="exWeight">—</span>
+                    <span class="session-target-label">kg</span>
+                </div>
+            </div>
+            <div id="exSetupNote" class="session-setup-note" style="display:none;">
+                <i data-feather="info" style="width:14px;height:14px;flex-shrink:0;margin-top:1px;"></i>
+                <span id="exSetupNoteText"></span>
+            </div>
+        </div>
+
+        <div class="session-log-card">
+            <h3>Log your reps &amp; weight</h3>
+            <div class="session-log-row">
+                <div class="session-log-field">
+                    <label>Actual Reps</label>
+                    <input type="number" id="sessionReps" min="0" inputmode="numeric">
+                </div>
+                <div class="session-log-field">
+                    <label>Actual Weight (kg)</label>
+                    <input type="number" id="sessionWeight" min="0" step="0.5" inputmode="decimal">
+                </div>
+            </div>
+            <div class="session-note-field">
+                <label>Personal Note</label>
+                <textarea id="sessionNote" placeholder="e.g. felt great, drop weight next time..."></textarea>
+            </div>
+        </div>
+    </div>
+
+    <!-- Rest timer view -->
+    <div class="session-rest-view hidden" id="restView">
+        <span class="session-rest-label">Rest</span>
+        <div class="session-timer-display" id="restDisplay">90</div>
+        <span class="session-timer-subtext" id="restSubtext">seconds</span>
+        <div class="session-rest-controls">
+            <input type="range" id="restSlider" min="30" max="300" step="15" value="90"
+                   oninput="adjustRestDuration(this.value)">
+            <span id="restSliderLabel" style="font-size:0.8125rem; color:var(--text-muted);">90s rest</span>
+        </div>
+        <div class="session-rest-btns">
+            <button class="btn btn-secondary" onclick="skipRest()">Skip Rest</button>
+            <button class="btn btn-primary" onclick="addRestTime(30)">+30s</button>
+        </div>
+    </div>
+
+    <!-- Complete view -->
+    <div class="session-complete-view hidden" id="completeView">
+        <div class="session-complete-icon">🎉</div>
+        <h2>Workout Complete!</h2>
+        <div class="session-stats-row">
+            <div class="session-stat-item">
+                <span class="session-stat-value" id="summaryExCount">—</span>
+                <span class="session-stat-label">Exercises</span>
+            </div>
+            <div class="session-stat-item">
+                <span class="session-stat-value" id="summaryVolume">—</span>
+                <span class="session-stat-label">Total Volume (kg)</span>
+            </div>
+        </div>
+        <div class="session-summary-list" id="summaryList"></div>
+        <a href="{{ plan_url }}" class="btn btn-primary btn-full btn-large" style="max-width:360px; text-align:center;">Back to Plan</a>
+    </div>
+
+    <!-- Footer (hidden during rest/complete) -->
+    <div class="session-footer" id="sessionFooter">
+        <button class="btn btn-secondary" onclick="showReplaceModal()">Replace</button>
+        <button class="btn btn-primary session-next-btn" id="sessionNextBtn" onclick="logAndNext()">Next →</button>
+    </div>
+
+</div>
+
+<!-- Replace modal -->
+<div class="session-modal-overlay hidden" id="replaceModal">
+    <div class="session-modal">
+        <div class="session-modal-header">
+            <h3>Replace Exercise</h3>
+            <button class="session-modal-close" onclick="closeReplaceModal()">
+                <i data-feather="x" style="width:20px;height:20px;"></i>
+            </button>
+        </div>
+        <p class="session-modal-sub">Select an alternative for the same muscle group</p>
+        <div class="session-alt-list" id="altList"></div>
+        <button class="btn btn-secondary btn-full" onclick="closeReplaceModal()" style="margin-top:16px;">Cancel</button>
+    </div>
+</div>
+
+<script>
+var EXERCISES = {{ exercises_json | safe }};
+var currentIndex = 0;
+var restDuration = 90;
+var restInterval = null;
+var restRemaining = 90;
+var sessionLogs = {};  // exerciseId -> {reps, weight, displayName}
+
+var ALTERNATIVES = {
+    "chest":    ["Push-up (Bodyweight)", "Cable Fly", "Incline Dumbbell Press", "Chest Dip", "Pec Deck Machine"],
+    "back":     ["Dumbbell Row", "Cable Row (Seated)", "Lat Pulldown", "Pull-up", "Face Pull"],
+    "legs":     ["Leg Press", "Bulgarian Split Squat", "Romanian Deadlift", "Leg Extension", "Leg Curl"],
+    "shoulders":["Dumbbell Shoulder Press", "Lateral Raise", "Arnold Press", "Cable Lateral Raise", "Upright Row"],
+    "arms":     ["Barbell Curl", "Hammer Curl", "Skull Crusher", "Cable Pushdown", "Preacher Curl"],
+    "core":     ["Plank", "Hanging Leg Raise", "Ab Wheel Rollout", "Cable Crunch", "Russian Twist"],
+    "glutes":   ["Hip Thrust", "Sumo Deadlift", "Glute Kickback", "Cable Pull-Through", "Donkey Kick"],
+    "full_body":["Clean and Press", "Kettlebell Swing", "Thruster", "Burpee"],
+    "cardio":   ["Rowing Machine", "Stationary Bike", "Treadmill", "Jump Rope"],
+};
+
+var MUSCLE_CLASSES = {
+    "chest":"muscle-chest","back":"muscle-back","legs":"muscle-legs",
+    "shoulders":"muscle-shoulders","arms":"muscle-arms","core":"muscle-core",
+    "glutes":"muscle-glutes","full_body":"muscle-full_body","cardio":"muscle-cardio",
+};
+
+function showExercise(index) {
+    if (index >= EXERCISES.length) { showComplete(); return; }
+    var ex = EXERCISES[index];
+
+    document.getElementById('exName').textContent = ex.name;
+    document.getElementById('exSets').textContent = ex.sets;
+    document.getElementById('exReps').textContent = ex.reps;
+    document.getElementById('exWeight').textContent = ex.weight_kg;
+    document.getElementById('sessionReps').value = ex.logged_reps;
+    document.getElementById('sessionWeight').value = ex.logged_weight;
+    document.getElementById('sessionNote').value = ex.user_note || '';
+
+    // Muscle badge
+    var badge = document.getElementById('exMuscle');
+    badge.textContent = '';
+    badge.className = 'muscle-badge';
+    if (ex.muscle_group) {
+        badge.textContent = ex.muscle_group.replace('_', ' ');
+        badge.classList.add(MUSCLE_CLASSES[ex.muscle_group] || '');
+    }
+
+    // Tutorial link
+    var tutorialEl = document.getElementById('exTutorial');
+    tutorialEl.href = 'https://www.youtube.com/results?search_query=' + encodeURIComponent(ex.name + ' how to tutorial');
+
+    // Setup note
+    var noteBox = document.getElementById('exSetupNote');
+    if (ex.notes) {
+        noteBox.style.display = 'flex';
+        document.getElementById('exSetupNoteText').textContent = ex.notes;
+    } else {
+        noteBox.style.display = 'none';
+    }
+
+    // Progress
+    var pct = Math.round((index / EXERCISES.length) * 100);
+    document.getElementById('sessionProgressFill').style.width = pct + '%';
+    document.getElementById('sessionProgressText').textContent = (index + 1) + ' / ' + EXERCISES.length;
+
+    // Show exercise view, hide rest
+    document.getElementById('exerciseView').classList.remove('hidden');
+    document.getElementById('restView').classList.add('hidden');
+    document.getElementById('sessionFooter').style.display = '';
+
+    // Last exercise: change button text
+    var nextBtn = document.getElementById('sessionNextBtn');
+    nextBtn.textContent = (index === EXERCISES.length - 1) ? 'Finish ✓' : 'Next →';
+    feather.replace();
+}
+
+function logAndNext() {
+    var ex = EXERCISES[currentIndex];
+    var reps = parseInt(document.getElementById('sessionReps').value) || 0;
+    var weight = parseFloat(document.getElementById('sessionWeight').value) || 0;
+    var note = document.getElementById('sessionNote').value.trim();
+
+    // Save note silently
+    if (note !== ex.user_note) {
+        fetch('/workout/note', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({exercise_id: ex.id, exercise_name: ex.name, note: note}),
+        });
+        ex.user_note = note;
+    }
+
+    // Log exercise
+    if (reps > 0 && weight >= 0) {
+        fetch('/workout/log', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({exercise_id: ex.id, actual_reps: reps, actual_weight_kg: weight}),
+        });
+        sessionLogs[ex.id] = {reps: reps, weight: weight, displayName: ex.name};
+    }
+
+    currentIndex++;
+    if (currentIndex >= EXERCISES.length) {
+        showComplete();
+    } else {
+        showRest();
+    }
+}
+
+/* ---- Rest timer ---- */
+function showRest() {
+    document.getElementById('exerciseView').classList.add('hidden');
+    document.getElementById('sessionFooter').style.display = 'none';
+    document.getElementById('restView').classList.remove('hidden');
+
+    restRemaining = restDuration;
+    renderRestDisplay();
+    clearInterval(restInterval);
+    restInterval = setInterval(function() {
+        restRemaining--;
+        renderRestDisplay();
+        if (restRemaining <= 0) {
+            clearInterval(restInterval);
+            showExercise(currentIndex);
+        }
+    }, 1000);
+}
+
+function renderRestDisplay() {
+    document.getElementById('restDisplay').textContent = restRemaining;
+    document.getElementById('restSubtext').textContent = restRemaining === 1 ? 'second' : 'seconds';
+}
+
+function skipRest() {
+    clearInterval(restInterval);
+    showExercise(currentIndex);
+}
+
+function adjustRestDuration(val) {
+    restDuration = parseInt(val);
+    restRemaining = restDuration;
+    renderRestDisplay();
+    document.getElementById('restSliderLabel').textContent = val + 's rest';
+}
+
+function addRestTime(secs) {
+    restRemaining += secs;
+    renderRestDisplay();
+}
+
+/* ---- Replace exercise ---- */
+function showReplaceModal() {
+    var ex = EXERCISES[currentIndex];
+    var muscle = ex.muscle_group || 'general';
+    var alts = ALTERNATIVES[muscle] || ALTERNATIVES['chest'];
+    // Filter out current exercise name
+    alts = alts.filter(function(a) { return a.toLowerCase() !== ex.name.toLowerCase(); });
+
+    var list = document.getElementById('altList');
+    list.innerHTML = '';
+    alts.forEach(function(alt) {
+        var div = document.createElement('div');
+        div.className = 'session-alt-item';
+        div.textContent = alt;
+        div.onclick = function() { replaceExercise(alt); };
+        list.appendChild(div);
+    });
+
+    document.getElementById('replaceModal').classList.remove('hidden');
+    feather.replace();
+}
+
+function closeReplaceModal() {
+    document.getElementById('replaceModal').classList.add('hidden');
+}
+
+function replaceExercise(altName) {
+    EXERCISES[currentIndex].name = altName;
+    closeReplaceModal();
+    showExercise(currentIndex);
+}
+
+/* ---- Completion screen ---- */
+function showComplete() {
+    clearInterval(restInterval);
+    document.getElementById('exerciseView').classList.add('hidden');
+    document.getElementById('restView').classList.add('hidden');
+    document.getElementById('sessionFooter').style.display = 'none';
+    document.getElementById('sessionProgressFill').style.width = '100%';
+
+    var logged = Object.values(sessionLogs);
+    var totalVolume = 0;
+    var ex;
+    for (var id in sessionLogs) {
+        var entry = sessionLogs[id];
+        // Find exercise to get sets
+        for (var i = 0; i < EXERCISES.length; i++) {
+            if (EXERCISES[i].id == id) { ex = EXERCISES[i]; break; }
+        }
+        var sets = ex ? ex.sets : 1;
+        totalVolume += sets * entry.reps * entry.weight;
+    }
+
+    document.getElementById('summaryExCount').textContent = logged.length;
+    document.getElementById('summaryVolume').textContent = Math.round(totalVolume).toLocaleString();
+
+    var list = document.getElementById('summaryList');
+    list.innerHTML = '';
+    EXERCISES.forEach(function(ex) {
+        var log = sessionLogs[ex.id];
+        var div = document.createElement('div');
+        div.className = 'session-summary-item';
+        div.innerHTML = '<span class="ex-name">' + ex.name + '</span>' +
+            '<span class="ex-result">' + (log ? log.reps + ' reps @ ' + log.weight + 'kg' : '—') + '</span>';
+        list.appendChild(div);
+    });
+
+    document.getElementById('completeView').classList.remove('hidden');
+}
+
+// Start session
+showExercise(0);
+feather.replace();
+</script>
+</body>
+</html>

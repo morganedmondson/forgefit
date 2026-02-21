@@ -2,11 +2,11 @@ import json
 import io
 from collections import defaultdict
 
-from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify, send_file
+from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify, send_file, abort
 from flask_login import login_required, current_user
 
 from app import db
-from models import WorkoutPlan, WorkoutLog, Exercise, ExerciseNote
+from models import WorkoutPlan, WorkoutDay, WorkoutLog, Exercise, ExerciseNote
 from ai_engine import generate_plan_with_ai, save_plan_to_db, plan_to_dict_with_logs
 
 workout_bp = Blueprint("workout", __name__, url_prefix="/workout")
@@ -273,3 +273,50 @@ def next_week():
         flash(f"Failed to generate next week: {e}", "error")
 
     return redirect(url_for("workout.plan"))
+
+
+@workout_bp.route("/session/<int:day_id>")
+@login_required
+def session(day_id):
+    day = WorkoutDay.query.get_or_404(day_id)
+    if day.plan.user_id != current_user.id:
+        abort(403)
+
+    # Existing logs for today
+    exercise_ids = [ex.id for ex in day.exercises]
+    logs = WorkoutLog.query.filter(
+        WorkoutLog.exercise_id.in_(exercise_ids),
+        WorkoutLog.user_id == current_user.id,
+    ).all()
+    logged_map = {log.exercise_id: log for log in logs}
+
+    # Personal notes
+    exercise_names = [ex.name.lower().strip() for ex in day.exercises]
+    user_notes = ExerciseNote.query.filter(
+        ExerciseNote.user_id == current_user.id,
+        ExerciseNote.exercise_name.in_(exercise_names),
+    ).all()
+    notes_map = {n.exercise_name: n.note for n in user_notes}
+
+    exercises_data = []
+    for ex in day.exercises:
+        log = logged_map.get(ex.id)
+        exercises_data.append({
+            "id": ex.id,
+            "name": ex.name,
+            "sets": ex.sets,
+            "reps": ex.reps,
+            "weight_kg": ex.weight_kg,
+            "muscle_group": ex.muscle_group or "",
+            "notes": ex.notes or "",
+            "user_note": notes_map.get(ex.name.lower().strip(), ""),
+            "logged_reps": log.actual_reps if log else ex.reps,
+            "logged_weight": log.actual_weight_kg if log else ex.weight_kg,
+        })
+
+    return render_template(
+        "workout/session.html",
+        day=day,
+        exercises_json=json.dumps(exercises_data),
+        plan_url=url_for("workout.plan"),
+    )

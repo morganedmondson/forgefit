@@ -8,53 +8,93 @@
         <p class="plan-sub">Today's food log</p>
     </div>
 
-    <!-- Macro Totals -->
+    <!-- Macro Totals + Progress Bars -->
     <div class="macro-totals">
         <div class="macro-card">
             <span class="macro-value" id="total-calories">{{ totals.calories }}</span>
+            {% if targets %}<span class="macro-target">/ {{ targets.calories }}</span>{% endif %}
             <span class="macro-label">Calories</span>
+            {% if targets %}
+            <div class="macro-progress-track">
+                <div class="macro-progress-bar macro-bar-calories" id="bar-calories"
+                     style="width: {{ [[(totals.calories / targets.calories * 100)|round|int, 0]|max, 100]|min }}%"></div>
+            </div>
+            {% endif %}
         </div>
         <div class="macro-card">
             <span class="macro-value" id="total-protein">{{ totals.protein_g }}</span>
+            {% if targets %}<span class="macro-target">/ {{ targets.protein_g }}g</span>{% endif %}
             <span class="macro-label">Protein (g)</span>
+            {% if targets %}
+            <div class="macro-progress-track">
+                <div class="macro-progress-bar macro-bar-protein" id="bar-protein"
+                     style="width: {{ [[(totals.protein_g / targets.protein_g * 100)|round|int, 0]|max, 100]|min }}%"></div>
+            </div>
+            {% endif %}
         </div>
         <div class="macro-card">
             <span class="macro-value" id="total-carbs">{{ totals.carbs_g }}</span>
+            {% if targets %}<span class="macro-target">/ {{ targets.carbs_g }}g</span>{% endif %}
             <span class="macro-label">Carbs (g)</span>
+            {% if targets %}
+            <div class="macro-progress-track">
+                <div class="macro-progress-bar macro-bar-carbs" id="bar-carbs"
+                     style="width: {{ [[(totals.carbs_g / targets.carbs_g * 100)|round|int, 0]|max, 100]|min if targets.carbs_g > 0 else 0 }}%"></div>
+            </div>
+            {% endif %}
         </div>
         <div class="macro-card">
             <span class="macro-value" id="total-fat">{{ totals.fat_g }}</span>
+            {% if targets %}<span class="macro-target">/ {{ targets.fat_g }}g</span>{% endif %}
             <span class="macro-label">Fat (g)</span>
+            {% if targets %}
+            <div class="macro-progress-track">
+                <div class="macro-progress-bar macro-bar-fat" id="bar-fat"
+                     style="width: {{ [[(totals.fat_g / targets.fat_g * 100)|round|int, 0]|max, 100]|min if targets.fat_g > 0 else 0 }}%"></div>
+            </div>
+            {% endif %}
         </div>
     </div>
 
-    <!-- Add Food -->
-    <div class="food-add-section">
-        <h3>Add Food</h3>
+    <!-- Targets from profile -->
+    {% if not targets %}
+    <p class="form-hint" style="margin-bottom:20px;">
+        Add your age, sex and activity level in <a href="{{ url_for('profile.edit') }}">Profile</a> to see personalised calorie &amp; macro targets.
+    </p>
+    {% endif %}
+
+    <!-- Quick Actions -->
+    <div class="nutrition-actions">
+        <button class="btn btn-secondary btn-small" onclick="openBarcodeScanner()">
+            <i data-feather="camera" style="width:14px;height:14px;vertical-align:-2px;"></i> Scan Barcode
+        </button>
+        <button class="btn btn-secondary btn-small" onclick="copyYesterday()">
+            <i data-feather="copy" style="width:14px;height:14px;vertical-align:-2px;"></i> Copy Yesterday
+        </button>
+    </div>
+
+    <!-- Add Food Form -->
+    <div class="food-add-section" id="addFoodSection">
+        <h3 id="addFoodTitle">Add Food</h3>
         <div class="food-add-row">
             <div class="food-search-wrap">
-                <input
-                    type="text"
-                    id="foodSearchInput"
-                    placeholder="Search for a food..."
-                    autocomplete="off"
-                    oninput="foodSearch()"
-                >
+                <input type="text" id="foodSearchInput" placeholder="Search for a food..."
+                       autocomplete="off" oninput="foodSearch()">
                 <div class="food-results" id="foodResults" style="display:none;"></div>
             </div>
             <div class="food-serving-wrap">
-                <input
-                    type="number"
-                    id="servingInput"
-                    placeholder="Serving (g)"
-                    min="1"
-                    step="1"
-                >
+                <input type="number" id="servingInput" placeholder="Serving (g)" min="1" step="1">
+            </div>
+            <div class="food-meal-wrap">
+                <select id="mealTypeSelect" class="form-select" style="height:100%;">
+                    <option value="breakfast">Breakfast</option>
+                    <option value="lunch">Lunch</option>
+                    <option value="dinner">Dinner</option>
+                    <option value="snacks" selected>Snacks</option>
+                </select>
             </div>
             <button class="btn btn-primary" onclick="addFood()">Add</button>
         </div>
-
-        <!-- Hidden inputs for selected food macros -->
         <input type="hidden" id="selectedName" value="">
         <input type="hidden" id="selectedCal" value="">
         <input type="hidden" id="selectedProtein" value="">
@@ -62,25 +102,38 @@
         <input type="hidden" id="selectedFat" value="">
     </div>
 
-    <!-- Today's Entries -->
-    <div class="food-entries-section">
-        <h3>Today's Entries</h3>
-        {% if entries %}
-        <div class="day-card">
-            <table class="exercise-table" id="foodTable">
+    <!-- Meal Sections -->
+    {% for meal_key in meal_order %}
+    {% set meal_entries = entries_by_meal.get(meal_key, []) %}
+    <div class="meal-section" id="meal-section-{{ meal_key }}">
+        <div class="meal-header" onclick="toggleMealSection('{{ meal_key }}')">
+            <div class="meal-header-left">
+                <span class="meal-title">{{ meal_labels[meal_key] }}</span>
+                {% if meal_entries %}
+                <span class="meal-cal-badge">{{ meal_entries | sum(attribute='calories') | round | int }} kcal</span>
+                {% endif %}
+            </div>
+            <div class="meal-header-right">
+                <button class="btn btn-secondary btn-small" onclick="event.stopPropagation(); setMealAndFocus('{{ meal_key }}')">+ Add</button>
+                <i data-feather="chevron-down" class="meal-chevron" id="chevron-{{ meal_key }}" style="width:16px;height:16px;"></i>
+            </div>
+        </div>
+        <div class="meal-body" id="meal-body-{{ meal_key }}" {% if not meal_entries %}style="display:none;"{% endif %}>
+            {% if meal_entries %}
+            <table class="exercise-table meal-table" id="meal-table-{{ meal_key }}">
                 <thead>
                     <tr>
                         <th>Food</th>
                         <th>Serving</th>
-                        <th>Calories</th>
-                        <th>Protein</th>
-                        <th>Carbs</th>
-                        <th>Fat</th>
+                        <th>kcal</th>
+                        <th>P</th>
+                        <th>C</th>
+                        <th>F</th>
                         <th></th>
                     </tr>
                 </thead>
-                <tbody id="foodTableBody">
-                    {% for entry in entries %}
+                <tbody id="meal-tbody-{{ meal_key }}">
+                    {% for entry in meal_entries %}
                     <tr id="food-row-{{ entry.id }}">
                         <td>{{ entry.food_name }}</td>
                         <td>{{ entry.serving_g | int }}g</td>
@@ -89,7 +142,7 @@
                         <td>{{ entry.carbs_g }}g</td>
                         <td>{{ entry.fat_g }}g</td>
                         <td>
-                            <button class="btn-icon" onclick="deleteFood({{ entry.id }}, this)" title="Remove">
+                            <button class="btn-icon" onclick="deleteFood({{ entry.id }}, this, '{{ meal_key }}')" title="Remove">
                                 <i data-feather="trash-2" style="width:14px;height:14px;"></i>
                             </button>
                         </td>
@@ -97,29 +150,495 @@
                     {% endfor %}
                 </tbody>
             </table>
-        </div>
-        {% else %}
-        <div class="empty-state" id="emptyState">
-            <p>No food logged today. Search above to add your first entry.</p>
-        </div>
-        <div class="day-card" id="foodTableWrap" style="display:none;">
-            <table class="exercise-table" id="foodTable">
+            {% else %}
+            <table class="exercise-table meal-table" id="meal-table-{{ meal_key }}" style="display:none;">
                 <thead>
-                    <tr>
-                        <th>Food</th>
-                        <th>Serving</th>
-                        <th>Calories</th>
-                        <th>Protein</th>
-                        <th>Carbs</th>
-                        <th>Fat</th>
-                        <th></th>
-                    </tr>
+                    <tr><th>Food</th><th>Serving</th><th>kcal</th><th>P</th><th>C</th><th>F</th><th></th></tr>
                 </thead>
-                <tbody id="foodTableBody"></tbody>
+                <tbody id="meal-tbody-{{ meal_key }}"></tbody>
             </table>
+            {% endif %}
         </div>
-        {% endif %}
+    </div>
+    {% endfor %}
+
+    <!-- Water Tracking -->
+    <div class="water-section">
+        <div class="water-header">
+            <span class="water-title">
+                <i data-feather="droplet" style="width:16px;height:16px;vertical-align:-2px;"></i> Water
+            </span>
+            <span class="water-total" id="waterTotal">{{ water_today }} ml</span>
+        </div>
+        <div class="water-btns">
+            <button class="btn btn-secondary btn-small" onclick="addWater(250)">+250ml</button>
+            <button class="btn btn-secondary btn-small" onclick="addWater(500)">+500ml</button>
+            <button class="btn btn-secondary btn-small" onclick="addWater(750)">+750ml</button>
+            <button class="btn btn-secondary btn-small" onclick="addWater(1000)">+1L</button>
+        </div>
+    </div>
+
+    <!-- Weekly Overview Chart -->
+    <div class="weekly-chart-section">
+        <h3>This Week</h3>
+        <div class="progress-chart-container" style="height:220px;">
+            <canvas id="weeklyChart"></canvas>
+        </div>
+    </div>
+
+    <!-- Custom Foods -->
+    <div class="custom-food-section">
+        <h3>My Custom Foods</h3>
+        <div class="custom-food-form day-card">
+            <h4>Create Custom Food</h4>
+            <div class="form-row form-row-4" style="margin-bottom:12px;">
+                <div class="form-group">
+                    <label>Name</label>
+                    <input type="text" id="cfName" placeholder="e.g. My Protein Shake">
+                </div>
+                <div class="form-group">
+                    <label>kcal / 100g</label>
+                    <input type="number" id="cfCal" min="0" step="0.1" placeholder="400">
+                </div>
+                <div class="form-group">
+                    <label>Protein / 100g</label>
+                    <input type="number" id="cfProtein" min="0" step="0.1" placeholder="30">
+                </div>
+                <div class="form-group">
+                    <label>Carbs / 100g</label>
+                    <input type="number" id="cfCarbs" min="0" step="0.1" placeholder="40">
+                </div>
+            </div>
+            <div class="form-row" style="align-items:flex-end; gap:12px;">
+                <div class="form-group" style="max-width:200px;">
+                    <label>Fat / 100g</label>
+                    <input type="number" id="cfFat" min="0" step="0.1" placeholder="10">
+                </div>
+                <button class="btn btn-primary" style="margin-bottom:0;" onclick="createCustomFood()">Save Food</button>
+            </div>
+        </div>
+        <div id="customFoodList" style="margin-top:12px;"></div>
     </div>
 
 </div>
+
+<!-- Barcode Scanner Modal -->
+<div id="barcodeModal" class="modal-overlay" style="display:none;">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Scan Barcode</h3>
+            <button class="modal-close" onclick="closeBarcodeScanner()"><i data-feather="x"></i></button>
+        </div>
+        <video id="barcodeVideo" autoplay playsinline style="width:100%; border-radius:8px;"></video>
+        <canvas id="barcodeCanvas" style="display:none;"></canvas>
+        <p id="barcodeStatus" style="margin-top:12px; font-size:0.875rem; color:var(--text-muted); text-align:center;">
+            Point camera at a barcode...
+        </p>
+        <button class="btn btn-secondary btn-full" onclick="closeBarcodeScanner()" style="margin-top:12px;">Cancel</button>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+/* ---- Targets for client-side progress bar updates ---- */
+var TARGETS = {{ targets | tojson }};
+var WEEKLY = {{ weekly_json | safe }};
+var CUSTOM_FOODS = {{ custom_foods_json | safe }};
+
+/* ---- Meal section toggle ---- */
+function toggleMealSection(meal) {
+    var body = document.getElementById('meal-body-' + meal);
+    var chevron = document.getElementById('chevron-' + meal);
+    if (!body) return;
+    var open = body.style.display !== 'none';
+    body.style.display = open ? 'none' : '';
+    if (chevron) chevron.style.transform = open ? 'rotate(-90deg)' : '';
+}
+
+function setMealAndFocus(meal) {
+    var select = document.getElementById('mealTypeSelect');
+    if (select) select.value = meal;
+    var title = document.getElementById('addFoodTitle');
+    var labels = { breakfast: 'Breakfast', lunch: 'Lunch', dinner: 'Dinner', snacks: 'Snacks', general: 'Other' };
+    if (title) title.textContent = 'Add to ' + (labels[meal] || meal);
+    document.getElementById('addFoodSection').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    setTimeout(function() { document.getElementById('foodSearchInput').focus(); }, 400);
+}
+
+/* ---- addFood override with meal type ---- */
+function addFood() {
+    var name = document.getElementById('selectedName').value;
+    var serving = document.getElementById('servingInput').value;
+    var mealType = document.getElementById('mealTypeSelect').value;
+
+    if (!name) { alert('Please search and select a food first.'); return; }
+    if (!serving || parseFloat(serving) <= 0) { alert('Please enter a valid serving size.'); return; }
+
+    fetch('/food/add', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            food_name: name,
+            serving_g: parseFloat(serving),
+            cal_100g: parseFloat(document.getElementById('selectedCal').value) || 0,
+            protein_100g: parseFloat(document.getElementById('selectedProtein').value) || 0,
+            carbs_100g: parseFloat(document.getElementById('selectedCarbs').value) || 0,
+            fat_100g: parseFloat(document.getElementById('selectedFat').value) || 0,
+            meal_type: mealType,
+        }),
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        if (!data.success) { alert(data.error || 'Failed to add food.'); return; }
+        var e = data.entry;
+        var meal = e.meal_type || 'general';
+
+        // Show meal body if hidden
+        var body = document.getElementById('meal-body-' + meal);
+        if (body && body.style.display === 'none') body.style.display = '';
+
+        // Show table if hidden
+        var table = document.getElementById('meal-table-' + meal);
+        if (table) table.style.display = '';
+
+        // Append row
+        var tbody = document.getElementById('meal-tbody-' + meal);
+        if (tbody) {
+            var tr = document.createElement('tr');
+            tr.id = 'food-row-' + e.id;
+            tr.innerHTML =
+                '<td>' + e.food_name + '</td>' +
+                '<td>' + Math.round(e.serving_g) + 'g</td>' +
+                '<td>' + e.calories + '</td>' +
+                '<td>' + e.protein_g + 'g</td>' +
+                '<td>' + e.carbs_g + 'g</td>' +
+                '<td>' + e.fat_g + 'g</td>' +
+                '<td><button class="btn-icon" onclick="deleteFood(' + e.id + ', this, \'' + meal + '\')" title="Remove">' +
+                '<i data-feather="trash-2" style="width:14px;height:14px;"></i></button></td>';
+            tbody.appendChild(tr);
+            feather.replace();
+        }
+
+        // Update totals + progress bars
+        updateTotals(e.calories, e.protein_g, e.carbs_g, e.fat_g);
+        updateMealCalBadge(meal);
+
+        // Reset inputs
+        document.getElementById('foodSearchInput').value = '';
+        document.getElementById('servingInput').value = '';
+        document.getElementById('selectedName').value = '';
+        document.getElementById('selectedCal').value = '';
+        document.getElementById('selectedProtein').value = '';
+        document.getElementById('selectedCarbs').value = '';
+        document.getElementById('selectedFat').value = '';
+    })
+    .catch(function() { alert('Failed to add food.'); });
+}
+
+function deleteFood(id, btnEl, meal) {
+    fetch('/food/delete/' + id, { method: 'POST' })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        if (!data.success) { alert(data.error || 'Failed to delete.'); return; }
+        var row = document.getElementById('food-row-' + id);
+        if (!row) return;
+        var cells = row.querySelectorAll('td');
+        var cal = parseFloat(cells[2].textContent) || 0;
+        var pro = parseFloat(cells[3].textContent) || 0;
+        var carbs = parseFloat(cells[4].textContent) || 0;
+        var fat = parseFloat(cells[5].textContent) || 0;
+        row.remove();
+        updateTotals(-cal, -pro, -carbs, -fat);
+        if (meal) updateMealCalBadge(meal);
+    })
+    .catch(function() { alert('Failed to delete.'); });
+}
+
+function updateTotals(cal, pro, carbs, fat) {
+    function add(id, val) {
+        var el = document.getElementById(id);
+        if (!el) return;
+        el.textContent = Math.round((parseFloat(el.textContent) + val) * 10) / 10;
+    }
+    add('total-calories', cal);
+    add('total-protein', pro);
+    add('total-carbs', carbs);
+    add('total-fat', fat);
+    updateProgressBars();
+}
+
+function updateProgressBars() {
+    if (!TARGETS) return;
+    function setPct(barId, current, target) {
+        var bar = document.getElementById(barId);
+        if (!bar || !target) return;
+        bar.style.width = Math.min(100, Math.max(0, Math.round(current / target * 100))) + '%';
+    }
+    setPct('bar-calories', parseFloat(document.getElementById('total-calories').textContent), TARGETS.calories);
+    setPct('bar-protein', parseFloat(document.getElementById('total-protein').textContent), TARGETS.protein_g);
+    setPct('bar-carbs', parseFloat(document.getElementById('total-carbs').textContent), TARGETS.carbs_g);
+    setPct('bar-fat', parseFloat(document.getElementById('total-fat').textContent), TARGETS.fat_g);
+}
+
+function updateMealCalBadge(meal) {
+    var tbody = document.getElementById('meal-tbody-' + meal);
+    if (!tbody) return;
+    var rows = tbody.querySelectorAll('tr');
+    var total = 0;
+    rows.forEach(function(r) {
+        var cells = r.querySelectorAll('td');
+        if (cells[2]) total += parseFloat(cells[2].textContent) || 0;
+    });
+    var section = document.getElementById('meal-section-' + meal);
+    if (!section) return;
+    var badge = section.querySelector('.meal-cal-badge');
+    if (rows.length === 0) {
+        if (badge) badge.style.display = 'none';
+    } else {
+        if (!badge) {
+            badge = document.createElement('span');
+            badge.className = 'meal-cal-badge';
+            section.querySelector('.meal-header-left').appendChild(badge);
+        }
+        badge.style.display = '';
+        badge.textContent = Math.round(total) + ' kcal';
+    }
+}
+
+/* ---- Copy yesterday ---- */
+function copyYesterday() {
+    fetch('/food/copy-yesterday', { method: 'POST' })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        if (!data.success) { alert(data.error || 'No entries found for yesterday.'); return; }
+        alert('Copied ' + data.count + ' entries from yesterday. Refreshing...');
+        location.reload();
+    })
+    .catch(function() { alert('Failed to copy.'); });
+}
+
+/* ---- Water tracking ---- */
+function addWater(ml) {
+    fetch('/food/water', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ amount_ml: ml }),
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        if (data.success) {
+            document.getElementById('waterTotal').textContent = data.total_ml + ' ml';
+        }
+    });
+}
+
+/* ---- Custom foods ---- */
+function createCustomFood() {
+    var name = document.getElementById('cfName').value.trim();
+    if (!name) { alert('Name is required.'); return; }
+    fetch('/food/custom', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            name: name,
+            cal_100g: parseFloat(document.getElementById('cfCal').value) || 0,
+            protein_100g: parseFloat(document.getElementById('cfProtein').value) || 0,
+            carbs_100g: parseFloat(document.getElementById('cfCarbs').value) || 0,
+            fat_100g: parseFloat(document.getElementById('cfFat').value) || 0,
+        }),
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        if (!data.success) { alert(data.error || 'Failed.'); return; }
+        CUSTOM_FOODS.push({ name: data.name, cal_100g: data.cal_100g, protein_100g: data.protein_100g,
+                             carbs_100g: data.carbs_100g, fat_100g: data.fat_100g, custom: true });
+        renderCustomFoodList();
+        ['cfName','cfCal','cfProtein','cfCarbs','cfFat'].forEach(function(id) {
+            document.getElementById(id).value = '';
+        });
+    });
+}
+
+function deleteCustomFood(id) {
+    fetch('/food/custom/' + id, { method: 'DELETE' })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        if (data.success) location.reload();
+    });
+}
+
+function renderCustomFoodList() {
+    fetch('/food/custom')
+    .then(function(r) { return r.json(); })
+    .then(function(foods) {
+        var list = document.getElementById('customFoodList');
+        if (!foods.length) { list.innerHTML = '<p class="form-hint">No custom foods yet.</p>'; return; }
+        var html = '<div class="day-card"><table class="exercise-table"><thead><tr><th>Name</th><th>kcal/100g</th><th>P</th><th>C</th><th>F</th><th></th></tr></thead><tbody>';
+        foods.forEach(function(f) {
+            html += '<tr><td>' + f.name + '</td><td>' + f.cal_100g + '</td><td>' + f.protein_100g + 'g</td><td>' + f.carbs_100g + 'g</td><td>' + f.fat_100g + 'g</td><td><button class="btn-icon" onclick="deleteCustomFood(' + f.id + ')" title="Delete"><i data-feather="trash-2" style="width:14px;height:14px;"></i></button></td></tr>';
+        });
+        html += '</tbody></table></div>';
+        list.innerHTML = html;
+        feather.replace();
+    });
+}
+renderCustomFoodList();
+
+/* ---- Barcode scanner ---- */
+var barcodeStream = null;
+var barcodeInterval = null;
+
+function openBarcodeScanner() {
+    document.getElementById('barcodeModal').style.display = 'flex';
+    document.getElementById('barcodeStatus').textContent = 'Point camera at a barcode...';
+    navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
+    .then(function(stream) {
+        barcodeStream = stream;
+        var video = document.getElementById('barcodeVideo');
+        video.srcObject = stream;
+        video.play();
+        if ('BarcodeDetector' in window) {
+            var detector = new BarcodeDetector({ formats: ['ean_13', 'upc_a', 'ean_8', 'code_128', 'qr_code'] });
+            barcodeInterval = setInterval(function() {
+                detector.detect(video).then(function(barcodes) {
+                    if (barcodes.length > 0) lookupBarcode(barcodes[0].rawValue);
+                }).catch(function() {});
+            }, 600);
+        } else if (typeof jsQR !== 'undefined') {
+            var canvas = document.getElementById('barcodeCanvas');
+            var ctx = canvas.getContext('2d');
+            barcodeInterval = setInterval(function() {
+                if (!video.videoWidth) return;
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+                ctx.drawImage(video, 0, 0);
+                var imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                var code = jsQR(imageData.data, imageData.width, imageData.height);
+                if (code) lookupBarcode(code.data);
+            }, 600);
+        } else {
+            document.getElementById('barcodeStatus').textContent = 'Camera scanning not supported on this device.';
+        }
+    })
+    .catch(function() {
+        document.getElementById('barcodeStatus').textContent = 'Camera access denied or unavailable.';
+    });
+}
+
+function lookupBarcode(code) {
+    clearInterval(barcodeInterval);
+    closeBarcodeScanner();
+    fetch('/food/barcode/' + encodeURIComponent(code))
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        if (data.error) { alert('Barcode not found: ' + code); return; }
+        document.getElementById('foodSearchInput').value = data.name;
+        document.getElementById('selectedName').value = data.name;
+        document.getElementById('selectedCal').value = data.cal_100g;
+        document.getElementById('selectedProtein').value = data.protein_100g;
+        document.getElementById('selectedCarbs').value = data.carbs_100g;
+        document.getElementById('selectedFat').value = data.fat_100g;
+        document.getElementById('servingInput').focus();
+    })
+    .catch(function() { alert('Failed to look up barcode.'); });
+}
+
+function closeBarcodeScanner() {
+    document.getElementById('barcodeModal').style.display = 'none';
+    if (barcodeStream) {
+        barcodeStream.getTracks().forEach(function(t) { t.stop(); });
+        barcodeStream = null;
+    }
+    clearInterval(barcodeInterval);
+}
+
+/* ---- Weekly chart ---- */
+(function() {
+    var ctx = document.getElementById('weeklyChart');
+    if (!ctx) return;
+    var labels = WEEKLY.map(function(d) { return d.date; });
+    var calories = WEEKLY.map(function(d) { return d.calories; });
+    new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Calories',
+                data: calories,
+                backgroundColor: 'rgba(17,17,17,0.15)',
+                borderColor: '#111111',
+                borderWidth: 1,
+                borderRadius: 4,
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: {
+                y: { beginAtZero: true, grid: { color: 'rgba(0,0,0,0.05)' } },
+                x: { grid: { display: false } }
+            }
+        }
+    });
+})();
+
+/* ---- Food search (include custom foods) ---- */
+var _foodDebounce = null;
+var _foodResults = [];
+
+function foodSearch() {
+    var q = document.getElementById('foodSearchInput').value.trim();
+    var resultsEl = document.getElementById('foodResults');
+    if (!q) { resultsEl.style.display = 'none'; return; }
+
+    // Immediately show matching custom foods
+    var localMatches = CUSTOM_FOODS.filter(function(f) {
+        return f.name.toLowerCase().indexOf(q.toLowerCase()) !== -1;
+    });
+
+    clearTimeout(_foodDebounce);
+    _foodDebounce = setTimeout(function() {
+        fetch('/food/search?q=' + encodeURIComponent(q))
+        .then(function(r) { return r.json(); })
+        .then(function(items) {
+            _foodResults = items;
+            resultsEl.innerHTML = '';
+            if (!items.length) { resultsEl.style.display = 'none'; return; }
+            items.forEach(function(item, i) {
+                var div = document.createElement('div');
+                div.className = 'food-result-item';
+                div.innerHTML = (item.custom ? '<strong>★ </strong>' : '') +
+                    item.name + ' — ' + item.cal_100g + ' kcal / 100g';
+                div.onclick = function() { selectFood(i); };
+                resultsEl.appendChild(div);
+            });
+            resultsEl.style.display = 'block';
+        })
+        .catch(function() { resultsEl.style.display = 'none'; });
+    }, 300);
+}
+
+function selectFood(index) {
+    var item = _foodResults[index];
+    if (!item) return;
+    document.getElementById('foodSearchInput').value = item.name;
+    document.getElementById('selectedName').value = item.name;
+    document.getElementById('selectedCal').value = item.cal_100g;
+    document.getElementById('selectedProtein').value = item.protein_100g;
+    document.getElementById('selectedCarbs').value = item.carbs_100g;
+    document.getElementById('selectedFat').value = item.fat_100g;
+    document.getElementById('foodResults').style.display = 'none';
+}
+
+// Close dropdown on outside click
+document.addEventListener('click', function(e) {
+    var wrap = document.querySelector('.food-search-wrap');
+    if (wrap && !wrap.contains(e.target)) {
+        var r = document.getElementById('foodResults');
+        if (r) r.style.display = 'none';
+    }
+});
+</script>
 {% endblock %}

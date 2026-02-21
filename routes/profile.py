@@ -7,12 +7,54 @@ from ai_engine import generate_plan_with_ai, save_plan_to_db
 
 profile_bp = Blueprint("profile", __name__, url_prefix="/profile")
 
+ACTIVITY_MULTIPLIERS = {
+    "sedentary": 1.2,
+    "light": 1.375,
+    "moderate": 1.55,
+    "active": 1.725,
+    "very_active": 1.9,
+}
+
+
+def calculate_macro_targets(weight_kg, height_cm, age, sex, activity_level, goal):
+    """Mifflin-St Jeor BMR -> TDEE -> macro splits. Returns dict or None."""
+    if not age or not sex:
+        return None
+    if sex == "male":
+        bmr = 10 * weight_kg + 6.25 * height_cm - 5 * age + 5
+    else:
+        bmr = 10 * weight_kg + 6.25 * height_cm - 5 * age - 161
+
+    tdee = bmr * ACTIVITY_MULTIPLIERS.get(activity_level or "moderate", 1.55)
+
+    if goal == "muscle":
+        calories = tdee + 300
+        protein = weight_kg * 2.2
+        fat = weight_kg * 0.9
+    elif goal == "strength":
+        calories = tdee + 200
+        protein = weight_kg * 2.0
+        fat = weight_kg * 1.0
+    else:  # general
+        calories = tdee
+        protein = weight_kg * 1.6
+        fat = weight_kg * 0.8
+
+    carbs = max(0, (calories - protein * 4 - fat * 9) / 4)
+    return {
+        "calorie_target": round(calories),
+        "protein_target_g": round(protein),
+        "carbs_target_g": round(carbs),
+        "fat_target_g": round(fat),
+    }
+
 
 @profile_bp.route("/onboarding", methods=["GET", "POST"])
 @login_required
 def onboarding():
     if request.method == "POST":
         try:
+            age_raw = request.form.get("age", "").strip()
             data = {
                 "height_cm": float(request.form["height_cm"]),
                 "weight_kg": float(request.form["weight_kg"]),
@@ -24,10 +66,21 @@ def onboarding():
                 "deadlift_1rm": float(request.form["deadlift_1rm"]),
                 "ohp_1rm": float(request.form["ohp_1rm"]),
                 "gym_equipment": request.form.get("gym_equipment", "").strip(),
+                "age": int(age_raw) if age_raw else None,
+                "sex": request.form.get("sex") or None,
+                "activity_level": request.form.get("activity_level", "moderate"),
             }
         except (KeyError, ValueError):
             flash("Please fill in all fields with valid numbers.", "error")
             return render_template("profile/onboarding.html")
+
+        # Calculate macro targets if age + sex provided
+        targets = calculate_macro_targets(
+            data["weight_kg"], data["height_cm"], data["age"],
+            data["sex"], data["activity_level"], data["goal"]
+        )
+        if targets:
+            data.update(targets)
 
         # Create or update profile
         profile = current_user.profile
@@ -63,6 +116,7 @@ def edit():
     if request.method == "POST":
         try:
             profile = current_user.profile
+            age_raw = request.form.get("age", "").strip()
             profile.height_cm = float(request.form["height_cm"])
             profile.weight_kg = float(request.form["weight_kg"])
             profile.goal = request.form["goal"]
@@ -73,6 +127,21 @@ def edit():
             profile.deadlift_1rm = float(request.form["deadlift_1rm"])
             profile.ohp_1rm = float(request.form["ohp_1rm"])
             profile.gym_equipment = request.form.get("gym_equipment", "").strip()
+            profile.age = int(age_raw) if age_raw else None
+            profile.sex = request.form.get("sex") or None
+            profile.activity_level = request.form.get("activity_level", "moderate")
+
+            # Recalculate macro targets
+            targets = calculate_macro_targets(
+                profile.weight_kg, profile.height_cm, profile.age,
+                profile.sex, profile.activity_level, profile.goal
+            )
+            if targets:
+                profile.calorie_target = targets["calorie_target"]
+                profile.protein_target_g = targets["protein_target_g"]
+                profile.carbs_target_g = targets["carbs_target_g"]
+                profile.fat_target_g = targets["fat_target_g"]
+
             db.session.commit()
         except (KeyError, ValueError):
             flash("Please fill in all fields with valid numbers.", "error")
