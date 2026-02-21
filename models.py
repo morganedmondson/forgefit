@@ -14,6 +14,7 @@ class User(UserMixin, db.Model):
 
     profile = db.relationship("Profile", backref="user", uselist=False, cascade="all, delete-orphan")
     plans = db.relationship("WorkoutPlan", backref="user", cascade="all, delete-orphan", order_by="WorkoutPlan.week_number.desc()")
+    food_logs = db.relationship("FoodLog", backref="user", cascade="all, delete-orphan")
 
     def set_password(self, password):
         self.password_hash = generate_password_hash(password, method="pbkdf2:sha256")
@@ -74,4 +75,16 @@ class WorkoutLog(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
     actual_reps = db.Column(db.Integer, nullable=False)
     actual_weight_kg = db.Column(db.Float, nullable=False)
+    logged_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+
+class FoodLog(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
+    food_name = db.Column(db.String(200), nullable=False)
+    serving_g = db.Column(db.Float, nullable=False)
+    calories = db.Column(db.Float, nullable=False)
+    protein_g = db.Column(db.Float, nullable=False)
+    carbs_g = db.Column(db.Float, nullable=False)
+    fat_g = db.Column(db.Float, nullable=False)
     logged_at = db.Column(db.DateTime, default=datetime.utcnow)

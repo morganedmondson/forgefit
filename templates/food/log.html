@@ -1,0 +1,125 @@
+{% extends "base.html" %}
+{% block title %}Nutrition — ForgeFit{% endblock %}
+{% block content %}
+<div class="nutrition-page">
+
+    <div class="plan-header">
+        <h2>Nutrition</h2>
+        <p class="plan-sub">Today's food log</p>
+    </div>
+
+    <!-- Macro Totals -->
+    <div class="macro-totals">
+        <div class="macro-card">
+            <span class="macro-value" id="total-calories">{{ totals.calories }}</span>
+            <span class="macro-label">Calories</span>
+        </div>
+        <div class="macro-card">
+            <span class="macro-value" id="total-protein">{{ totals.protein_g }}</span>
+            <span class="macro-label">Protein (g)</span>
+        </div>
+        <div class="macro-card">
+            <span class="macro-value" id="total-carbs">{{ totals.carbs_g }}</span>
+            <span class="macro-label">Carbs (g)</span>
+        </div>
+        <div class="macro-card">
+            <span class="macro-value" id="total-fat">{{ totals.fat_g }}</span>
+            <span class="macro-label">Fat (g)</span>
+        </div>
+    </div>
+
+    <!-- Add Food -->
+    <div class="food-add-section">
+        <h3>Add Food</h3>
+        <div class="food-add-row">
+            <div class="food-search-wrap">
+                <input
+                    type="text"
+                    id="foodSearchInput"
+                    placeholder="Search for a food..."
+                    autocomplete="off"
+                    oninput="foodSearch()"
+                >
+                <div class="food-results" id="foodResults" style="display:none;"></div>
+            </div>
+            <div class="food-serving-wrap">
+                <input
+                    type="number"
+                    id="servingInput"
+                    placeholder="Serving (g)"
+                    min="1"
+                    step="1"
+                >
+            </div>
+            <button class="btn btn-primary" onclick="addFood()">Add</button>
+        </div>
+
+        <!-- Hidden inputs for selected food macros -->
+        <input type="hidden" id="selectedName" value="">
+        <input type="hidden" id="selectedCal" value="">
+        <input type="hidden" id="selectedProtein" value="">
+        <input type="hidden" id="selectedCarbs" value="">
+        <input type="hidden" id="selectedFat" value="">
+    </div>
+
+    <!-- Today's Entries -->
+    <div class="food-entries-section">
+        <h3>Today's Entries</h3>
+        {% if entries %}
+        <div class="day-card">
+            <table class="exercise-table" id="foodTable">
+                <thead>
+                    <tr>
+                        <th>Food</th>
+                        <th>Serving</th>
+                        <th>Calories</th>
+                        <th>Protein</th>
+                        <th>Carbs</th>
+                        <th>Fat</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody id="foodTableBody">
+                    {% for entry in entries %}
+                    <tr id="food-row-{{ entry.id }}">
+                        <td>{{ entry.food_name }}</td>
+                        <td>{{ entry.serving_g | int }}g</td>
+                        <td>{{ entry.calories }}</td>
+                        <td>{{ entry.protein_g }}g</td>
+                        <td>{{ entry.carbs_g }}g</td>
+                        <td>{{ entry.fat_g }}g</td>
+                        <td>
+                            <button class="btn-icon" onclick="deleteFood({{ entry.id }}, this)" title="Remove">
+                                <i data-feather="trash-2" style="width:14px;height:14px;"></i>
+                            </button>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="empty-state" id="emptyState">
+            <p>No food logged today. Search above to add your first entry.</p>
+        </div>
+        <div class="day-card" id="foodTableWrap" style="display:none;">
+            <table class="exercise-table" id="foodTable">
+                <thead>
+                    <tr>
+                        <th>Food</th>
+                        <th>Serving</th>
+                        <th>Calories</th>
+                        <th>Protein</th>
+                        <th>Carbs</th>
+                        <th>Fat</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody id="foodTableBody"></tbody>
+            </table>
+        </div>
+        {% endif %}
+    </div>
+
+</div>
+{% endblock %}
